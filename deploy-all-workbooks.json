@@ -1,0 +1,22 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-08-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {},
+    "variables": {},
+    "resources": [
+        {
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2020-10-01",
+            "name": "linkedAuthentication",
+            "properties": {
+                "mode": "Incremental",
+                "templateLink": {
+                    "uri": "https://raw.githubusercontent.com/Azure/Microsoft-Defender-for-Cloud/main/Workbooks/ASC%20Recommendations%20Graph/armTemplate.json",
+                    "contentVersion": "1.0.0.0"
+                }
+            }
+        },
+    ],
+    "outputs": {
+    }
+}
