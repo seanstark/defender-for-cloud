@@ -6,7 +6,7 @@
   The id of the subscription to enable Defender for Servers AMA Agent
 	
   .PARAMETER workspaceResourceId
-  The full workspace resource ID for using a custom workspace. This paramater is optional, if not specific the default workspace will be used. 
+  The full workspace resource ID for using a custom workspace. This paramater is optional, if not specified the default workspace will be used. 
 
   .EXAMPLE
   Enable Auto-provisioning configuration for AMA with the default workspace
