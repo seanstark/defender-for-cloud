@@ -25,6 +25,20 @@ param(
     [string]$workspaceResourceId
 )
 
+# Check for required modules
+$requiredModules = 'Az.Accounts', 'Az.Resources', 'Az.Security'
+$availableModules = Get-Module -ListAvailable -Name $requiredModules
+$modulesToInstall = $requiredModules | where-object {$_ -notin $availableModules.Name}
+ForEach ($module in $modulesToInstall){
+    Write-Host "Installing Missing PowerShell Module: $module" -ForegroundColor Yellow
+    Install-Module $module -force
+}
+
+If(!(Get-AzContext)){
+    Write-Host 'Connecting to Azure Subscription' -ForegroundColor Yellow
+    Connect-AzAccount -Subscription $subscriptionId -WarningAction SilentlyContinue | Out-Null
+}
+
 #Set Current Subscription
 $currentSub = Set-AzContext -Subscription $subscriptionId
 
