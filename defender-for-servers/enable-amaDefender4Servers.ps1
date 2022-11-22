@@ -1,20 +1,20 @@
 <#
-	.DESCRIPTION
-	This script will enable auto provisioning of the Azure Monitor Agent for Defender for Servers
+  .DESCRIPTION
+  This script will enable auto provisioning of the Azure Monitor Agent for Defender for Servers
 
-	.PARAMETER subscriptionId
-	The id of the subscription to enable Defender for Servers AMA Agent
-		
-	.PARAMETER workspaceResourceId
-	The full workspace resource ID for using a custom workspace. This paramater is optional, if not specific the default workspace will be used. 
+  .PARAMETER subscriptionId
+  The id of the subscription to enable Defender for Servers AMA Agent
 	
-	.EXAMPLE
-	Enable Auto-provisioning configuration for AMA with the default workspace
-	.\enable-amaDefender4Servers.ps1 -subscriptionId 'ada06e68-4678-4210-443a-c6cacebf41c5'
-		
-	.EXAMPLE
-	Enable Auto-provisioning configuration for AMA with a custom workspace
-	.\enable-amaDefender4Servers.ps1 -subscriptionId 'ada06e68-4678-4210-443a-c6cacebf41c5' -workspaceResourceId '/subscriptions/11c61180-d5dc-4a02-b2da-1f06b8245691/resourcegroups/sentinel-prd/providers/microsoft.operationalinsights/workspaces/sentinel-prd'
+  .PARAMETER workspaceResourceId
+  The full workspace resource ID for using a custom workspace. This paramater is optional, if not specific the default workspace will be used. 
+
+  .EXAMPLE
+  Enable Auto-provisioning configuration for AMA with the default workspace
+  .\enable-amaDefender4Servers.ps1 -subscriptionId 'ada06e68-4678-4210-443a-c6cacebf41c5'
+	
+  .EXAMPLE
+  Enable Auto-provisioning configuration for AMA with a custom workspace
+  .\enable-amaDefender4Servers.ps1 -subscriptionId 'ada06e68-4678-4210-443a-c6cacebf41c5' -workspaceResourceId '/subscriptions/11c61180-d5dc-4a02-b2da-1f06b8245691/resourcegroups/sentinel-prd/providers/microsoft.operationalinsights/workspaces/sentinel-prd'
 #>
 
 param(
@@ -60,7 +60,6 @@ If ($workspaceResourceId){
         Scope = "/subscriptions/$($currentSub.Subscription.Id)"
     }
 }
-
 
 #Disbale Existing Auto Provisioning Settings
 Set-AzSecurityAutoProvisioningSetting -Name "default"
