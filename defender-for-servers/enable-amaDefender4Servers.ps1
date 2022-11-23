@@ -81,5 +81,7 @@ Set-AzSecurityAutoProvisioningSetting -Name "default"
 #Create the Policy Assignment
 $assignment = New-AzPolicyAssignment @paramSet
 
-#Create a Remmediation Task
-Start-AzPolicyRemediation -Name $assignment.Properties.DisplayName -PolicyAssignmentId $assignment.PolicyAssignmentId
+#Create Remmediation Tasks
+ForEach ($PolicyDefinition in $definition.Properties.PolicyDefinitions){
+    Start-AzPolicyRemediation -Name $PolicyDefinition.policyDefinitionReferenceId -PolicyAssignmentId $assignment.PolicyAssignmentId -PolicyDefinitionReferenceId $PolicyDefinition.policyDefinitionReferenceId
+}
