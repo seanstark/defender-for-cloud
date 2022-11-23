@@ -26,7 +26,7 @@ param(
 )
 
 # Check for required modules
-$requiredModules = 'Az.Accounts', 'Az.Resources', 'Az.Security'
+$requiredModules = 'Az.Accounts', 'Az.Resources', 'Az.Security', 'Az.PolicyInsights'
 $availableModules = Get-Module -ListAvailable -Name $requiredModules
 $modulesToInstall = $requiredModules | where-object {$_ -notin $availableModules.Name}
 ForEach ($module in $modulesToInstall){
