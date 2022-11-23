@@ -81,7 +81,17 @@ Set-AzSecurityAutoProvisioningSetting -Name "default"
 #Create the Policy Assignment
 $assignment = New-AzPolicyAssignment @paramSet
 
+#Create Role Assignments for the system managed identity
+$roles = @()
+ForEach ($PolicyDefinition in $definition.Properties.PolicyDefinitions){
+    $roles += ((Get-AzPolicyDefinition -Id $PolicyDefinition.policyDefinitionId).properties.policyRule.then.details.roleDefinitionIds -split "/")[-1]
+}
+
+ForEach ($role in ($roles | Get-Unique)){
+    New-AzRoleAssignment -Scope "/subscriptions/$($currentSub.Subscription.Id)" -ObjectId $assignment.Identity.PrincipalId -RoleDefinitionId $role -ErrorAction SilentlyContinue
+}
+
 #Create Remmediation Tasks
 ForEach ($PolicyDefinition in $definition.Properties.PolicyDefinitions){
-    Start-AzPolicyRemediation -Name $PolicyDefinition.policyDefinitionReferenceId -PolicyAssignmentId $assignment.PolicyAssignmentId -PolicyDefinitionReferenceId $PolicyDefinition.policyDefinitionReferenceId
+    Start-AzPolicyRemediation -Name $PolicyDefinition.policyDefinitionReferenceId -PolicyAssignmentId $assignment.PolicyAssignmentId -PolicyDefinitionReferenceId $PolicyDefinition.policyDefinitionReferenceId -ParallelDeploymentCount 30 -ResourceDiscoveryMode ReEvaluateCompliance
 }
