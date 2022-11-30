@@ -1,0 +1,59 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-08-01/managementGroupDeploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "Role Name": {
+      "type": "string",
+      "defaultValue": "Microsoft Sentinel Defender for Cloud Connector Contributor",
+      "metadata": {
+        "description": "Friendly name of the role definition"
+      }
+    },
+    "Role Description": {
+      "type": "string",
+      "defaultValue": "Microsoft Sentinel Defender for Cloud Connector Contributor",
+      "metadata": {
+        "description": "Detailed description of the role definition"
+      }
+    },
+	"Management Group Name": {
+      "type": "string",
+      "defaultValue": "Tenant Root Group",
+      "metadata": {
+        "description": "The name of the management group the role should be created at"
+      }
+    }
+  },
+  "variables": {
+	  "actions": ["Microsoft.Security/register/action", 
+                          "Microsoft.Security/*/read", 
+                          "Microsoft.Resources/subscriptions/read", 
+                          "Microsoft.SecurityInsights/dataConnectors/read", 
+                          "Microsoft.SecurityInsights/dataConnectors/write", 
+                          "Microsoft.Security/settings/write"
+               ],
+    "roleDefName": "[guid(subscription().id, string(parameters('actions')))]",
+	  "mgId": "[concat('Microsoft.Management/managementGroups/', parameters('Management Group Name'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Authorization/roleDefinitions",
+      "apiVersion": "2018-07-01",
+      "name": "[variables('roleDefName')]",
+      "properties": {
+        "roleName": "[parameters('Role Name')]",
+        "description": "[parameters('Role Description')]",
+        "type": "customRole",
+        "permissions": [
+          {
+            "actions": "[parameters('actions')]"
+          }
+        ],
+        "assignableScopes": [
+          "[subscription().id]"
+		   "[concat('providers/Microsoft.Management/managementGroups/', variables('mgId'), subscription().tenantId)]"
+        ]
+      }
+    }
+  ]
+}
