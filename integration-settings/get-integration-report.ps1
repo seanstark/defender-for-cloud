@@ -15,7 +15,7 @@ ForEach ($subscription in $subscriptions){
             DefenderforServersPlan = $(if($defenderForServersPlan.properties.subPlan -eq $null){'notenabled'}else{$defenderForServersPlan.properties.subPlan})
             DefenderforCloudApps = ($settings | where name -eq 'MCAS').Properties.enabled
             DefenderforEndpoint = ($settings | where name -eq 'WDATP').Properties.enabled
-            DefenderforEndpointLinux = ($settings | where name -eq 'WDATP_EXCLUDE_LINUX_PUBLIC_PREVIEW').Properties.enabled
+            DefenderforEndpointExcludeLinux = ($settings | where name -eq 'WDATP_EXCLUDE_LINUX_PUBLIC_PREVIEW').Properties.enabled
             DefenderforEndpointUnifiedAgent = ($settings | where name -eq 'WDATP_UNIFIED_SOLUTION').Properties.enabled
             SentinelBiDirectionalAlertSync = ($settings | where name -eq 'Sentinel').Properties.enabled
             error = $null
@@ -27,7 +27,7 @@ ForEach ($subscription in $subscriptions){
             DefenderforServersPlan = 'no settings returned'
             DefenderforCloudApps = 'no settings returned'
             DefenderforEndpoint = 'no settings returned'
-            DefenderforEndpointLinux = 'no settings returned'
+            DefenderforEndpointExcludeLinux = 'no settings returned'
             DefenderforEndpointUnifiedAgent = 'no settings returned'
             SentinelBiDirectionalAlertSync = 'no settings returned'
             error = ('No Settings Returned for Subscription: {0}, you may not have security reader rights assigned' -f $subscription.Name)

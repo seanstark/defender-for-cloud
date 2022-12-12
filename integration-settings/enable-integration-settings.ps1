@@ -13,7 +13,7 @@ param(
     [boolean]$DefenderforEndpoint = $true,
     
     [Parameter(Mandatory = $false)]
-    [boolean]$DefenderforEndpointLinux = $true,
+    [boolean]$DefenderforEndpointExcludeLinux = $false,
 
     [Parameter(Mandatory = $false)]
     [boolean]$DefenderforEndpointUnifiedAgent = $true
@@ -35,7 +35,7 @@ Invoke-AzRestMethod -SubscriptionId $subscription.Id -ResourceProviderName 'Micr
 $payload = (@{
     kind = 'DataExportSettings'
     properties = @{
-        enabled = $DefenderforEndpointLinux
+        enabled = $DefenderforEndpointExcludeLinux
     }
 }) | ConvertTo-Json
 
@@ -70,7 +70,3 @@ $payload = (@{
 }) | ConvertTo-Json
 
 Invoke-AzRestMethod -SubscriptionId $subscription.Id -ResourceProviderName 'Microsoft.Security' -ResourceType 'pricings' -Name 'VirtualMachines' -ApiVersion '2022-03-01' -Method PUT -Payload $payload
-
-#Get Current Settings
-$settings = ((Invoke-AzRestMethod -SubscriptionId $subscription.Id -ResourceProviderName 'Microsoft.Security' -ResourceType 'settings' -ApiVersion '2022-05-01' -Method Get).Content | ConvertFrom-Json).Value
-$defenderForServersPlan = (Invoke-AzRestMethod -SubscriptionId $subscription.Id -ResourceProviderName 'Microsoft.Security' -ResourceType 'pricings' -Name 'VirtualMachines' -ApiVersion '2022-03-01' -Method Get).Content | ConvertFrom-Json
