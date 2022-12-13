@@ -1,13 +1,37 @@
+<#
+  .DESCRIPTION
+  This script will report on all integration settings for all subscriptins in Defender for Cloud and provide the current Defender for Servers Plan
+  
+  .PARAMETER TenantId
+  The TenantId to gather all subscriptions under. If no TenantId is specified the current Tenant will be returned from Get-AzContext
+
+  .EXAMPLE
+  Get all subscription integration settings for the currently connected Tenant
+  $settings = .\get-integration-report.ps1
+
+  .EXAMPLE
+  Get all subscription integration settings for a specific Tenant
+  $settings = .\get-integration-report.ps1 -TenantId 'c94dffc7-2dd9-4750-a3de-a160ddd68c90'
+ #>
+
+ param(
+    [Parameter(ValueFromPipeline = $true, Mandatory=$false)]
+    [string]$TenantId
+ )
+
 #Get All Subscriptions
-$subscriptions = Get-AzSubscription -TenantId (Get-AzContext).Tenant | Where State -eq 'Enabled'
+If($TenantId){
+    $subscriptions = Get-AzSubscription -TenantId $TenantId | Where State -eq 'Enabled'
+}else{    
+    $subscriptions = Get-AzSubscription -TenantId (Get-AzContext).Tenant | Where State -eq 'Enabled'
+}
 
 $friendlysettings = @()
 
 ForEach ($subscription in $subscriptions){
-    $settings = $null
     $settings = ((Invoke-AzRestMethod -SubscriptionId $subscription.Id -ResourceProviderName 'Microsoft.Security' -ResourceType 'settings' -ApiVersion '2022-05-01' -Method Get).Content | ConvertFrom-Json).Value
     $defenderForServersPlan = (Invoke-AzRestMethod -SubscriptionId $subscription.Id -ResourceProviderName 'Microsoft.Security' -ResourceType 'pricings' -Name 'VirtualMachines' -ApiVersion '2022-03-01' -Method Get).Content | ConvertFrom-Json
-    $subscription.Name
+    Write-Verbose $subscription.Name
     if($settings){
         $friendlysettings += ([PSCustomObject]@{
             subscriptionName = $subscription.Name
@@ -34,3 +58,5 @@ ForEach ($subscription in $subscriptions){
         })
     }
 }
+
+$friendlysettings

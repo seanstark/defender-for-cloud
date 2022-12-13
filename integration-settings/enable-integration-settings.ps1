@@ -31,7 +31,6 @@
   .EXAMPLE
   Enable with all reccomended settings and Defender for Servers P1
   .\enable-integration-settings.ps1 -subscriptionId 'c94dffc7-2dd9-4750-a3de-a160ddd68c90' -DefenderforServersPlan 'P1'
-
 #>
 
 param(
