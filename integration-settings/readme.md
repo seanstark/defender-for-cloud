@@ -39,8 +39,19 @@ enable-integration-settings.ps1 will update:
 - Defender for Endpoint: Exclude Linux Servers Public Preview Flag
 - Sentinel Bi-Directional Alert Sync Settings
 
+### Default Settings
+> The script will impose the following default settings unless specified
+
+| Feature | Setting |
+| ------- | ------- |
+| Defender for Servers Plan | Current Subscription Setting |
+| Defender for Cloud Apps Integration | Enabled |
+| Defender for Endpoint Integration | Enabled |
+| Defender for Endpoint Unified Agent | Enabled |
+| Defender for Endpoint: Exclude Linux Servers Public Preview Flag | Disabled |
+| Sentinel Bi-Directional Alert Sync Settings | Enabled |
+
 ### Running the Script
-> By Default the currently set Defender for Servers Plan on the subscription will be used. 
 
 ```powershell
 # Enable with all reccomended settings: Defender for Servers current plan, Defender for Endpoint Integration, Defender for Cloud Apss Integration, Unified Agent, Include Linux Servers
