@@ -67,8 +67,6 @@ $payload = (@{
 $results = Invoke-AzRestMethod -SubscriptionId $subscription.Id -ResourceProviderName 'Microsoft.Security' -ResourceType 'settings' -Name 'WDATP' -ApiVersion '2022-05-01' -Method PUT -Payload $payload
 Write-Host ('Configured Defender for Endpoint Integration on Subscription: {0}; Enabled: {1}' -f $subscription.Name, ($results.Content | ConvertFrom-Json).properties.enabled)
 
-
-
 #Set Defender for Endpoint Linux Agent
 $payload = (@{
     kind = 'DataExportSettings'
