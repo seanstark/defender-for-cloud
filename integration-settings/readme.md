@@ -15,7 +15,7 @@ get-integration-report.ps1 script will report on:
 - Defender for Endpoint Integration
 - Defender for Endpoint Unified Agent
 - Defender for Endpoint: Exclude Linux Servers Public Preview Flag
-- Sentinel Bi-Directional Sync Settings
+- Sentinel Bi-Directional Alert Sync Settings
 
 ### Running the Script
 ```powershell
@@ -36,7 +36,7 @@ enable-integration-settings.ps1 will update:
 - Defender for Endpoint Integration
 - Defender for Endpoint Unified Agent
 - Defender for Endpoint: Exclude Linux Servers Public Preview Flag
-- Sentinel Bi-Directional Sync Settings
+- Sentinel Bi-Directional Alert Sync Settings
 
 ### Running the Script
 > By Default the currently set Defender for Servers Plan on the subscription will be used. 
