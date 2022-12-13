@@ -31,7 +31,7 @@ $friendlysettings = @()
 ForEach ($subscription in $subscriptions){
     $settings = ((Invoke-AzRestMethod -SubscriptionId $subscription.Id -ResourceProviderName 'Microsoft.Security' -ResourceType 'settings' -ApiVersion '2022-05-01' -Method Get).Content | ConvertFrom-Json).Value
     $defenderForServersPlan = (Invoke-AzRestMethod -SubscriptionId $subscription.Id -ResourceProviderName 'Microsoft.Security' -ResourceType 'pricings' -Name 'VirtualMachines' -ApiVersion '2022-03-01' -Method Get).Content | ConvertFrom-Json
-    Write-Verbose $subscription.Name
+    Write-Host ('Getting Settings for subscription {0}' -f $subscription.Name)
     if($settings){
         $friendlysettings += ([PSCustomObject]@{
             subscriptionName = $subscription.Name
