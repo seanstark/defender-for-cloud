@@ -1,10 +1,46 @@
+<#
+  .DESCRIPTION
+  This script will update Defender for Cloud's integrations settings on a subscription and enable Defender for Servers P1 or P2 if desired.
+
+  .PARAMETER subscriptionId
+  The id of the subscription to update settings for
+
+  .PARAMETER DefenderforServersPlan
+  The Defender for Servers Plan to Enable. Accepted values are P1, P2, Disabled, or Current. By default the current plan is used.
+
+  .PARAMETER DefenderforCloudApps
+  Enable the Defender for Cloud Apps Integration. Default is set to true.
+
+  .PARAMETER DefenderforEndpoint
+  Enable the Defender for Endpoint Integration. Default is set to true.
+
+  .PARAMETER DefenderforEndpointExcludeLinux
+  Exclude Linux Endpoints from Defender for Endpoint. Default is set to false. *Note this setting is only available for subscriptions where the legacy preview may still be enabled.
+
+  .PARAMETER DefenderforEndpointUnifiedAgent
+  Enable the Defender for Endpoint Unified Agent Default is set to true.
+
+  .EXAMPLE
+  Enable with all reccomended settings: Defender for Servers current plan, Defender for Endpoint Integration, Defender for Cloud Apss Integration, Unified Agent, Include Linux Servers
+  .\enable-integration-settings.ps1 -subscriptionId 'c94dffc7-2dd9-4750-a3de-a160ddd68c90'
+
+  .EXAMPLE
+  Enable with all reccomended settings on multiple subscriptions
+  Get-AzSubscription | % {.\enable-integration-settings.ps1 -subscriptionId $_.id}
+
+  .EXAMPLE
+  Enable with all reccomended settings and Defender for Servers P1
+  .\enable-integration-settings.ps1 -subscriptionId 'c94dffc7-2dd9-4750-a3de-a160ddd68c90' -DefenderforServersPlan 'P1'
+
+#>
 
 param(
     [Parameter(ValueFromPipeline = $true, Mandatory=$true)]
     [string]$subscriptionId,
     
     [Parameter(Mandatory = $false)]
-    [string]$DefenderforServersPlan = 'P2',
+    [ValidateSet("P1", "P2", "Disabled", "Current")]
+    [string]$DefenderforServersPlan = 'Current',
 
     [Parameter(Mandatory = $false)]
     [boolean]$DefenderforCloudApps = $true,
@@ -70,8 +106,14 @@ Write-Host ('Configured Defender for Cloud Apps Integration on Subscription: {0}
 #Set Defender For Servers Plan
 $payload = (@{
     properties = @{
-        pricingTier = 'Standard'
-        subPlan = $DefenderforServersPlan
+        pricingTier = $(If($DefenderforServersPlan -like 'Disabled'){'Free'}else{'Standard'})
+        subPlan = $(If($DefenderforServersPlan -like 'Disabled'){$null}
+        elseif ($DefenderforServersPlan -like 'Current') {
+            $currentPlan = (Invoke-AzRestMethod -SubscriptionId $subscription.Id -ResourceProviderName 'Microsoft.Security' -ResourceType 'pricings' -Name 'VirtualMachines' -ApiVersion '2022-03-01' -Method Get).Content | ConvertFrom-Json
+            If ($currentPlan.properties.subPlan){$currentPlan.properties.subPlan}
+            else{$null}
+        }
+        else{$DefenderforServersPlan})
     }
 }) | ConvertTo-Json
 
