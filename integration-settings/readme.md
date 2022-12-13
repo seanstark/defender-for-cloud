@@ -18,7 +18,7 @@ get-integration-report.ps1 script will report on:
 - Sentinel Bi-Directional Alert Sync Settings
 
 ### Running the Script
-> If you would like to see progress use the -verbose parameter
+
 ```powershell
 # Get all subscription integration settings for the currently connected Tenant
 $settings = .\get-integration-report.ps1
