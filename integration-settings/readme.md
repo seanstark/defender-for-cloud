@@ -22,11 +22,13 @@ get-integration-report.ps1 script will report on:
 ```powershell
 # Get all subscription integration settings for the currently connected Tenant
 $settings = .\get-integration-report.ps1
+$settings | Export-CSV integration-settings.csv
 ```
 
 ```powershell
 Get all subscription integration settings for a specific Tenant
 $settings = .\get-integration-report.ps1 -TenantId 'c94dffc7-2dd9-4750-a3de-a160ddd68c90'
+$settings | Export-CSV integration-settings.csv
 ```
 
 ## enable-integration-settings
