@@ -121,14 +121,3 @@ $payload = (@{
 
 $results = Invoke-AzRestMethod -SubscriptionId $subscription.Id -ResourceProviderName 'Microsoft.Security' -ResourceType 'pricings' -Name 'VirtualMachines' -ApiVersion '2022-03-01' -Method PUT -Payload $payload
 Write-Host ('Configured Defender for Servers Plan on Subscription: {0}; Plan: {1}' -f $subscription.Name, ($results.Content | ConvertFrom-Json).properties.subPlan)
-
-#Set Sentinel Bi-Directional Sync Settings
-$payload = (@{
-    kind = 'AlertSyncSettings'
-    properties = @{
-        enabled = $SentinelBiDirectionalAlertSync
-    }
-}) | ConvertTo-Json
-
-$results = Invoke-AzRestMethod -SubscriptionId $subscription.Id -ResourceProviderName 'Microsoft.Security' -ResourceType 'settings' -Name 'Sentinel' -ApiVersion '2022-05-01' -Method PUT -Payload $payload
-Write-Host ('Configured Sentinel Bi-Directional Alert Sync Integration on Subscription: {0}; Enabled: {1}' -f $subscription.Name, ($results.Content | ConvertFrom-Json).properties.enabled)
