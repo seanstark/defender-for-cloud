@@ -29,7 +29,10 @@ $payload = (@{
     }
 }) | ConvertTo-Json
 
-Invoke-AzRestMethod -SubscriptionId $subscription.Id -ResourceProviderName 'Microsoft.Security' -ResourceType 'settings' -Name 'WDATP' -ApiVersion '2022-05-01' -Method PUT -Payload $payload
+$results = Invoke-AzRestMethod -SubscriptionId $subscription.Id -ResourceProviderName 'Microsoft.Security' -ResourceType 'settings' -Name 'WDATP' -ApiVersion '2022-05-01' -Method PUT -Payload $payload
+Write-Host ('Configured Defender for Endpoint Integration on Subscription: {0}; Enabled: {1}' -f $subscription.Name, ($results.Content | ConvertFrom-Json).properties.enabled)
+
+
 
 #Set Defender for Endpoint Linux Agent
 $payload = (@{
@@ -39,7 +42,8 @@ $payload = (@{
     }
 }) | ConvertTo-Json
 
-Invoke-AzRestMethod -SubscriptionId $subscription.Id -ResourceProviderName 'Microsoft.Security' -ResourceType 'settings' -Name 'WDATP_EXCLUDE_LINUX_PUBLIC_PREVIEW' -ApiVersion '2022-05-01' -Method PUT -Payload $payload
+$results = Invoke-AzRestMethod -SubscriptionId $subscription.Id -ResourceProviderName 'Microsoft.Security' -ResourceType 'settings' -Name 'WDATP_EXCLUDE_LINUX_PUBLIC_PREVIEW' -ApiVersion '2022-05-01' -Method PUT -Payload $payload
+Write-Host ('Configured Exclude Linux Servers from Defender for Endpoint on Subscription: {0}; Enabled: {1}' -f $subscription.Name, ($results.Content | ConvertFrom-Json).properties.enabled)
 
 #Set Defender for Endpoint Unified Agent
 $payload = (@{
@@ -49,7 +53,8 @@ $payload = (@{
     }
 }) | ConvertTo-Json
 
-Invoke-AzRestMethod -SubscriptionId $subscription.Id -ResourceProviderName 'Microsoft.Security' -ResourceType 'settings' -Name 'WDATP_UNIFIED_SOLUTION' -ApiVersion '2022-05-01' -Method PUT -Payload $payload
+$results = Invoke-AzRestMethod -SubscriptionId $subscription.Id -ResourceProviderName 'Microsoft.Security' -ResourceType 'settings' -Name 'WDATP_UNIFIED_SOLUTION' -ApiVersion '2022-05-01' -Method PUT -Payload $payload
+Write-Host ('Configured Defender for Endpoint Unified Agent on Subscription: {0}; Enabled: {1}' -f $subscription.Name, ($results.Content | ConvertFrom-Json).properties.enabled)
 
 #Set Defender for Cloud Apps Integration
 $payload = (@{
@@ -59,7 +64,8 @@ $payload = (@{
     }
 }) | ConvertTo-Json
 
-Invoke-AzRestMethod -SubscriptionId $subscription.Id -ResourceProviderName 'Microsoft.Security' -ResourceType 'settings' -Name 'MCAS' -ApiVersion '2022-05-01' -Method PUT -Payload $payload
+$results = Invoke-AzRestMethod -SubscriptionId $subscription.Id -ResourceProviderName 'Microsoft.Security' -ResourceType 'settings' -Name 'MCAS' -ApiVersion '2022-05-01' -Method PUT -Payload $payload
+Write-Host ('Configured Defender for Cloud Apps Integration on Subscription: {0}; Enabled: {1}' -f $subscription.Name, ($results.Content | ConvertFrom-Json).properties.enabled)
 
 #Set Defender For Servers Plan
 $payload = (@{
@@ -69,4 +75,5 @@ $payload = (@{
     }
 }) | ConvertTo-Json
 
-Invoke-AzRestMethod -SubscriptionId $subscription.Id -ResourceProviderName 'Microsoft.Security' -ResourceType 'pricings' -Name 'VirtualMachines' -ApiVersion '2022-03-01' -Method PUT -Payload $payload
+$results = Invoke-AzRestMethod -SubscriptionId $subscription.Id -ResourceProviderName 'Microsoft.Security' -ResourceType 'pricings' -Name 'VirtualMachines' -ApiVersion '2022-03-01' -Method PUT -Payload $payload
+Write-Host ('Configured Defender for Servers Plan on Subscription: {0}; Plan: {1}' -f $subscription.Name, ($results.Content | ConvertFrom-Json).properties.subPlan)
