@@ -15,6 +15,10 @@
   .EXAMPLE
   Enable Auto-provisioning configuration for AMA with a custom workspace
   .\enable-amaDefender4Servers.ps1 -subscriptionId 'ada06e68-4678-4210-443a-c6cacebf41c5' -workspaceResourceId '/subscriptions/11c61180-d5dc-4a02-b2da-1f06b8245691/resourcegroups/sentinel-prd/providers/microsoft.operationalinsights/workspaces/sentinel-prd'
+
+ .EXAMPLE
+  Enable Auto-provisioning configuration for AMA with the default workspace on a management group
+  .\enable-amaDefender4Servers.ps1 -managementGroupName 'Finance'
 #>
 
 param(
@@ -123,5 +127,5 @@ ForEach ($role in ($roles | Get-Unique)){
 # Create Remmediation Tasks
 Write-Host 'Creating Remmediation Tasks'
 ForEach ($PolicyDefinition in $definition.Properties.PolicyDefinitions){
-    Start-AzPolicyRemediation -Name $PolicyDefinition.policyDefinitionReferenceId -PolicyAssignmentId $assignment.PolicyAssignmentId -PolicyDefinitionReferenceId $PolicyDefinition.policyDefinitionReferenceId -ParallelDeploymentCount 30 -ResourceDiscoveryMode ReEvaluateCompliance
+    Start-AzPolicyRemediation -Name $PolicyDefinition.policyDefinitionReferenceId -PolicyAssignmentId $assignment.PolicyAssignmentId -PolicyDefinitionReferenceId $PolicyDefinition.policyDefinitionReferenceId -ParallelDeploymentCount 30 -ResourceDiscoveryMode ReEvaluateCompliance | Out-Null
 }
