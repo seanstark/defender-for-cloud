@@ -4,7 +4,7 @@
 ## Overview
 This script will enable auto provisioning of the Azure Monitor Agent for Defender for Servers in Defender for Cloud across subscriptions or managment groups.
 
-> The Root Managmenent group name is acutally a GUID and not Root Management Group
+> The Tenant Root Group management group name is acutally a GUID and not "Tenant Root Group"
 
 > This script will not configure additional security event collection. You will need to create a seperate data collection rule if addtional security event collection is required. 
 
