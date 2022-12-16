@@ -3,10 +3,13 @@
   This script will enable auto provisioning of the Azure Monitor Agent for Defender for Servers
 
   .PARAMETER subscriptionId
-  The id of the subscription to enable Defender for Servers AMA Agent
+  The id of the subscription to enable Defender for Servers AMA on.
 	
   .PARAMETER workspaceResourceId
   The full workspace resource ID for using a custom workspace. This paramater is optional, if not specified the default workspace will be used. 
+
+  .PARAMETER managementGroupName
+  The Management Group Name to enable Defender for Servers AMA on. Note, the Tenant Root Group management group name is acutally a GUID and not "Tenant Root Group"
 
   .EXAMPLE
   Enable Auto-provisioning configuration for AMA with the default workspace
