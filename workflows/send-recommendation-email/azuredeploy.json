@@ -64,10 +64,10 @@
         "type": "ApiConnection",
         "inputs": {
             "body": {
-                "Body": "<p><br>\n<strong>Reccomendation<br>\n</strong>@{triggerBody()?['properties']?['displayName']}<br>\n<br>\n<strong>Description<br>\n</strong>@{triggerBody()?['properties']?['metadata']?['description']}<br>\n<br>\n<strong>Impacted Resource: </strong>@{last(split(triggerBody()?['properties']?['resourceDetails']?['id'], '/'))}<br>\n<br>\n<a href=\"@{triggerBody()?['properties']?['links']?['azurePortalUri']}\">View More Details </a><strong><br>\n</strong><br>\n<br>\n<br>\n&nbsp;</p>",
+                "Body": "<p><br>\n<strong>Reccomendation<br>\n</strong>@{triggerBody()?['properties']?['displayName']}<br>\n<br>\n<strong>Description<br>\n</strong>@{triggerBody()?['properties']?['metadata']?['description']}<br>\n<br>\n<strong>Impacted Resource: </strong>@{last(split(triggerBody()?['properties']?['resourceDetails']?['id'], '/'))}<br>\n<br>\n<a href=\"@{triggerBody()?['properties']?['links']?['azurePortalUri']}\">View More Details</a><br>\n<br>\n<strong>Remediation Steps</strong><br>\n@{triggerBody()?['properties']?['metadata']?['remediationDescription']}<br>\n&nbsp;</p>",
                 "Importance": "Normal",
                 "Subject": "Defender for Cloud: @{triggerBody()?['properties']?['displayName']} ",
-                "To": "emailaddress@test.com"
+                "To": "test@test.com"
             },
             "host": {
                 "connection": {
