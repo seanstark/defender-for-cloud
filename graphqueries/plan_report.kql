@@ -3,7 +3,7 @@ securityresources
 | extend planStatus = case(properties.pricingTier == "Standard", "Enabled", "Disabled")
 | extend subPlan = case(isnotempty(properties.subPlan),properties.subPlan,properties.pricingTier)
 | extend freeTrialRemainingTime = properties.freeTrialRemainingTime
-| extend inTrialPeriod = case(freeTrialRemainingTime != "PT0S", "Yes", "No")
+| extend trialPeriodAvailable = case(freeTrialRemainingTime != "PT0S", "Yes", "No")
 | extend defenderPlan = case(
     name == "Api", "Defender for API",
     name == "CloudPosture", "Defender for CSPM",
@@ -22,3 +22,5 @@ securityresources
     name == "VirtualMachines", "Defender for Servers", name
 )
 | extend isPlanDeprecated = case(isnotempty(properties.deprecated) and properties.deprecated == true,properties.deprecated,"false")
+| join kind=leftouter (ResourceContainers | where type=='microsoft.resources/subscriptions' | where properties.state == "Enabled" | project subscriptionName=name, subscriptionId) on subscriptionId
+| project subscriptionName, subscriptionId, defenderPlan, planStatus, trialPeriodAvailable, freeTrialRemainingTime, subPlan, isPlanDeprecated, properties
