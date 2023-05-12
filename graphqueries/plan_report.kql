@@ -1,0 +1,23 @@
+securityresources
+| where type =~ "microsoft.security/pricings"
+| extend planEnabled = case(properties.pricingTier == "Standard", "Enabled", "Disabled")
+| extend subPlan = case(isnotempty(properties.subPlan),properties.subPlan,properties.pricingTier)
+| extend freeTrialRemainingTime = properties.freeTrialRemainingTime
+| extend inTrialPeriod = case(freeTrialRemainingTime != "PT0S", "Yes", "No")
+| extend defenderPlan = case(name == "Api", "Defender for API",
+name == "CloudPosture", "Defender for CSPM",
+name == "Containers", "Defender for Containers",
+name == "CosmosDbs", "Defender for CosmosDB",
+name == "OpenSourceRelationalDatabases", "Defender for OpenSource Databases",
+name == "Arm", "Defender for Resource Manager",
+name == "Dns", "Defender for DNS",
+name == "KeyVaults", "Defender for KeyVault",
+name == "ContainerRegistry", "Defender for Container Registry",
+name == "KubernetesService", "Defender for Kubernetes",
+name == "SqlServerVirtualMachines", "Defender for SQL on Machines",
+name == "StorageAccounts", "Defender for Storage Accounts",
+name == "AppServices", "Defender for AppServices",
+name == "SqlServers", "Defender for SQL",
+name == "VirtualMachines", "Defender for Servers", name
+)
+| extend isPlanDeprecated = case(isnotempty(properties.deprecated),properties.deprecated,"N/A")
