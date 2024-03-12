@@ -1,6 +1,6 @@
 <#
     .DESCRIPTION
-        The script will get estimated ingress on Azure Files Azure Blob files for supported V2 Storage Accounts with file containers across 
+        The script will get estimated ingress metrics on Azure Files and Azure Blob files for supported V2 Storage Accounts with file containers across 
         all subscriptions in a tenant based on the ingress metric, which is in bytes. 
         - The ingress metric used in this script is based on the last 30 days at a 5 minute interval
         - Overall this estimate is a ballpark and not to be expected as 100% accurate measure of file size on upload
@@ -21,7 +21,7 @@
         .\get-azStorageIngressMetrics.ps1 -subscriptionId '98aa6bab-0ef8-48e2-8397-a0101e0712e3', 'ada06e68-375e-4210-be3a-c6cacebf41c5'
     
     .EXAMPLE
-        Get File and Blob  Ingress Estimates for all storage accounts in a management group you specify
+        Get File and Blob Ingress Estimates for all storage accounts in a management group you specify
         .\get-azStorageIngressMetrics.ps1 -managementGroupName "Finance"
 #>
 param(
