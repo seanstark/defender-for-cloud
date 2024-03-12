@@ -19,3 +19,4 @@ This script will get estimated ingress metrics on Azure Files and Azure Blob fil
 ```powershell
 .\get-azStorageIngressMetrics.ps1 -managementGroupName "Finance"
 ```
+![image](https://github.com/seanstark/defender-for-cloud/assets/84108246/0ae988c1-420d-49ba-944b-eef0aedde3ea)
