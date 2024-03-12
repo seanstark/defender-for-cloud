@@ -18,7 +18,7 @@
     
     .EXAMPLE
         Get File and Blob Ingress Estimates for all storage accounts in Subscriptions you specify
-        .\get-azStorageIngressMetrics.ps1 -subscriptionId '98aa6bab-0ef8-48e2-8397-a0101e0712e3', 'ada06e68-375e-4210-be3a-c6cacebf41c5'
+        .\get-azStorageIngressMetrics.ps1 -subscriptionId '98aaxxab-0ef8-48e2-8397-a0101e0712e3', 'adaxxe68-375e-4210-be3a-c6cacebf41c5'
     
     .EXAMPLE
         Get File and Blob Ingress Estimates for all storage accounts in a management group you specify
