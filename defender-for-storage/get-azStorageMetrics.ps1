@@ -23,23 +23,23 @@
 
     .EXAMPLE
         Get estimates for all storage accounts in the Tenant
-        .\get-azStorageIngressMetrics.ps1 -all
+        .\get-azStorageMetrics.ps1 -all
     
     .EXAMPLE
         Get estimates for all storage accounts in a management group you specify
-        .\get-azStorageIngressMetrics.ps1 -managementGroupName "Finance" 
+        .\get-azStorageMetrics.ps1 -managementGroupName "Finance" 
 
     .EXAMPLE
         Get estimates for all storage accounts in Subscriptions you specify
-        .\get-azStorageIngressMetrics.ps1 -subscriptionId '98aaxxab-0ef8-48e2-8397-a0101e0712e3', 'adaxxe68-375e-4210-be3a-c6cacebf41c5'
+        .\get-azStorageMetrics.ps1 -subscriptionId '98aaxxab-0ef8-48e2-8397-a0101e0712e3', 'adaxxe68-375e-4210-be3a-c6cacebf41c5'
 
     .EXAMPLE
         Get estimates for all storage accounts in a resource group you specify
-        .\get-azStorageIngressMetrics.ps1 -resourceGroupName "production accounts" -subscriptionId 'adaxxe68-375e-4210-be3a-c6cacebf41c5'
+        .\get-azStorageMetrics.ps1 -resourceGroupName "production accounts" -subscriptionId 'adaxxe68-375e-4210-be3a-c6cacebf41c5'
 
     .EXAMPLE
         Get estimates for a single storage account
-        .\get-azStorageIngressMetrics.ps1 -storageAccountName "customeruploads" -resourceGroupName 'production accounts' -subscriptionId 'adaxxe68-375e-4210-be3a-c6cacebf41c5'
+        .\get-azStorageMetrics.ps1 -storageAccountName "customeruploads" -resourceGroupName 'production accounts' -subscriptionId 'adaxxe68-375e-4210-be3a-c6cacebf41c5'
 #>
 param(
     [CmdletBinding(DefaultParameterSetName="all")]
@@ -162,7 +162,7 @@ $blobMetricFilter = (New-AzMetricFilter -Dimension 'ApiName' -Operator eq -Value
 
 # Get the related metrics for each Storage Account
 Write-Host ('Found a total of {0} storage Accounts' -f $storageAccounts.Count) -ForegroundColor Yellow
-ForEach ($storageAccount in ($storageAccounts | Select -first 2)){
+ForEach ($storageAccount in $storageAccounts){
     If((Get-AzContext).Subscription.Id -notlike $storageAccount.SubscriptionId){
         Set-AzContext -subscriptionId $storageAccount.SubscriptionId | Out-Null
     }
