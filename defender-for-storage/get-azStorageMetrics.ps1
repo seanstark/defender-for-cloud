@@ -31,7 +31,10 @@
 
     .EXAMPLE
         Get estimates for all storage accounts in Subscriptions you specify
-        .\get-azStorageMetrics.ps1 -subscriptionId '98aaxxab-0ef8-48e2-8397-a0101e0712e3', 'adaxxe68-375e-4210-be3a-c6cacebf41c5'
+        # Single Subscription
+        .\get-azStorageMetrics.ps1 -subscriptionId '98aaxxab-0ef8-48e2-8397-a0101e0712e3'
+        # Multiple Subscriptions
+        .\get-azStorageMetrics.ps1 -subscriptionId '98aaxxab-0ef8-48e2-8397-a0101e0712e3,adaxxe68-375e-4210-be3a-c6cacebf41c5'
 
     .EXAMPLE
         Get estimates for all storage accounts in a resource group you specify
@@ -109,12 +112,12 @@ function Get-StorageAccounts {
 }
 
 # Get storage accounts based on parameters
-If ($all) {
+If ($PSCmdlet.ParameterSetName -like 'all') {
     Write-Host "Scope: $($PSCmdlet.ParameterSetName)"
     $subscriptions = Get-AzSubscription | where State -like 'Enabled' -WarningAction SilentlyContinue
     $storageAccounts = Get-StorageAccounts -subscriptions $subscriptions
 }
-If ($managementGroupName){
+If ($PSCmdlet.ParameterSetName -like 'mgscope'){
     Write-Host "Scope: $($PSCmdlet.ParameterSetName)"
     $mg = Get-AzManagementGroup -GroupName $managementGroupName -Recurse -Expand -WarningAction SilentlyContinue
     # Get All Subscriptions in the parent management group supplied
@@ -139,18 +142,22 @@ If ($managementGroupName){
     $mgSubs | % {$subscriptions += Get-AzSubscription -SubscriptionId $_.Id.split('/')[-1] -WarningAction SilentlyContinue}
     $storageAccounts = Get-StorageAccounts -subscriptions $subscriptions
 }
-If ($subscriptionId -and (!($storageAccountName -or $resourceGroupName))){
+If ($PSCmdlet.ParameterSetName -like 'subscope'){
         Write-Host "Scope: $($PSCmdlet.ParameterSetName)"
-        $subscriptions += $subscriptionId | % {Get-AzSubscription -SubscriptionId $_ -WarningAction SilentlyContinue}
-        $storageAccounts = Get-StorageAccounts -subscriptions $subscriptionId
+        If ($subscriptionId -match ','){
+            $subscriptions += $subscriptionId.split(',').trim() | % {Get-AzSubscription -SubscriptionId $_ -WarningAction SilentlyContinue}
+        }else{
+            $subscriptions += $subscriptionId | % {Get-AzSubscription -SubscriptionId $_ -WarningAction SilentlyContinue}
+        }
+        $storageAccounts = Get-StorageAccounts -subscriptions $subscriptions
 }
-If ($resourceGroupName -and (!($storageAccountName))){
+If ($PSCmdlet.ParameterSetName -like 'resourcegroupscope'){
     Write-Host "Scope: $($PSCmdlet.ParameterSetName)"
     $subscriptions = Get-AzSubscription -SubscriptionId $subscriptionId
     $storageAccounts = Get-StorageAccounts -subscriptions $subscriptions | where ResourceGroupName -Like $resourceGroupName
 
 }
-If ($storageAccountName) {
+If ($PSCmdlet.ParameterSetName -like 'storageAccountScope') {
     Write-Host "Scope: $($PSCmdlet.ParameterSetName)"
     $subscriptions = Get-AzSubscription -SubscriptionId $subscriptionId
     $storageAccounts = Get-StorageAccounts -subscriptions $subscriptions | Where-Object {$_.ResourceGroupName -Like $resourceGroupName -and $_.StorageAccountName -like $storageAccountName}

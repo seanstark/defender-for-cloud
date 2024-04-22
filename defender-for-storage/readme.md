@@ -17,7 +17,10 @@ This script will get estimated metrics on Azure Storage V2 Accounts to help esti
 ```
 ### Get estimates for all storage accounts in Subscriptions you specify
 ```powershell
-.\get-azStorageMetrics.ps1 -subscriptionId '98aaxxab-0ef8-48e2-8397-a0101e0712e3', 'adaxxe68-375e-4210-be3a-c6cacebf41c5'
+# Single Subscription
+.\get-azStorageMetrics.ps1 -subscriptionId '98aaxxab-0ef8-48e2-8397-a0101e0712e3'
+# Multiple Subscriptions
+.\get-azStorageMetrics.ps1 -subscriptionId '98aaxxab-0ef8-48e2-8397-a0101e0712e3,adaxxe68-375e-4210-be3a-c6cacebf41c5'
 ```
 ### Get estimates for all storage accounts in a resource group you specify
 ```powershell
