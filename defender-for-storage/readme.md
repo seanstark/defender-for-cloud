@@ -30,5 +30,6 @@ This script will get estimated metrics on Azure Storage V2 Accounts to help esti
 ```powershell
 .\get-azStorageMetrics.ps1 -storageAccountName "customeruploads" -resourceGroupName 'production accounts' -subscriptionId 'adaxxe68-375e-4210-be3a-c6cacebf41c5'
 ```
-![image](https://github.com/seanstark/defender-for-cloud/assets/84108246/48ec6bb5-db46-4a66-a9fa-2a128bad4418)
+![image](https://github.com/seanstark/defender-for-cloud/assets/84108246/80611040-e224-48e4-af5c-657417bb03fb)
+
 
