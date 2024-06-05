@@ -1,0 +1,12 @@
+// Count of servers supported by Defender for Servers
+resources
+| extend planTypes = tolower('microsoft.compute/virtualmachines, microsoft.compute/virtualmachinescalesets, microsoft.hybridcompute/machines, microsoft.classiccompute/virtualmachines')
+| extend type = tolower(type)
+| where planTypes has type
+| extend powerState = properties.extended.instanceView.powerState.displayStatus
+| extend extensions = tostring(properties.virtualMachineProfile.extensionProfile)
+| where extensions !contains 'Compute.AKS'
+| where tostring(properties.extended.instanceView.powerState.displayStatus) !contains 'deallocated'
+| where properties.status !in ('Expired','Disconnected')
+| project subscriptionId, resourceGroup, id, name, type, powerState, extensions, properties.status, properties
+| summarize count = count() by subscriptionId, resourceGroup
