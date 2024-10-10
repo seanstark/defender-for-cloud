@@ -71,7 +71,7 @@ $overageTransactionsPrice  = 0.1492
 $overageTransactionLimit = 73000000
 $malwareScanningPerGBPrice = .15
 
-$requiredModules = 'Az.Accounts', 'Az.Storage', 'Az.Monitor'
+$requiredModules = 'Az.Accounts', 'Az.Storage', 'Az.Monitor', 'Az.ResourceGraph'
 $availableModules = Get-Module -ListAvailable -Name $requiredModules
 $modulesToInstall = $requiredModules | where-object {$_ -notin $availableModules.Name}
 ForEach ($module in $modulesToInstall){
@@ -91,76 +91,90 @@ If(!(Get-AzContext)){
     Connect-AzAccount -WarningAction SilentlyContinue | Out-Null
 }
 
-function Get-StorageAccounts {
+function Invoke-AzGraphQuery {
     param (
-        $subscriptions
+        [Parameter(Mandatory=$true)]
+        [string]$query,
+        [Parameter(Mandatory=$false)]
+        [string]$managementGroup
     )
-    $storageAccounts = @()
-    ForEach ($subscription in $subscriptions){
-        $subStorageAccounts = $null
-        Write-Host ('Getting All Storage Accounts in the {0} Subscription' -f $subscription.Name) -ForegroundColor Yellow
-        Set-AzContext -SubscriptionId $subscription.id | Out-Null
-        $subStorageAccounts = Get-AzStorageAccount | Where Kind -like 'StorageV2'
-        ForEach ($storageAccount in $subStorageAccounts){
-            $storageAccount | Add-Member -MemberType NoteProperty -Name 'Subscription' -Value $subscription.Name -Force -ErrorAction SilentlyContinue
-            $storageAccount | Add-Member -MemberType NoteProperty -Name 'SubscriptionId' -Value $subscription.Id -Force -ErrorAction SilentlyContinue
-            $storageAccount | Add-Member -MemberType NoteProperty -Name 'SubscriptionTenantId' -Value $subscription.TenantId -Force -ErrorAction SilentlyContinue
+
+    $batchSize = 1000
+    $skipResult = 0
+    
+    [System.Collections.Generic.List[string]]$queryResult
+    
+    while ($true) {
+    
+      if ($skipResult -gt 0) {
+        If ($managementGroup){
+            $graphResult = Search-AzGraph -Query $query -First $batchSize -SkipToken $graphResult.SkipToken -ManagementGroup $managementGroup
+        }else{
+            $graphResult = Search-AzGraph -Query $query -First $batchSize -SkipToken $graphResult.SkipToken
         }
-        $storageAccounts += $subStorageAccounts
+      }
+      else {
+        If ($managementGroup){
+            $graphResult = Search-AzGraph -Query $query -First $batchSize -ManagementGroup $managementGroup
+        }else{
+            $graphResult = Search-AzGraph -Query $query -First $batchSize
+        }
+      }
+    
+      $queryResult += $graphResult.data
+    
+      if ($graphResult.data.Count -lt $batchSize) {
+        break;
+      }
+      $skipResult += $skipResult + $batchSize
     }
-    $storageAccounts
+
+    $queryResult | Select-Object -Skip 0
 }
+
+$baseQuery = "resources
+        | where type =~ 'microsoft.storage/storageaccounts'
+        | where kind =~ 'storageV2'
+        | join kind=inner (
+            ResourceContainers
+                | where type == 'microsoft.resources/subscriptions'
+                | where properties.state == 'Enabled'
+                | project subscriptionId, Subscription = name, SubscriptionTenantId = tenantId
+            ) on subscriptionId
+        | project-away subscriptionId1
+        | project id, StorageAccountName = name, SubscriptionTenantId, Subscription, subscriptionId, ResourceGroupName = resourceGroup"
 
 # Get storage accounts based on parameters
 If ($PSCmdlet.ParameterSetName -like 'all') {
     Write-Host "Scope: $($PSCmdlet.ParameterSetName)"
-    $subscriptions = Get-AzSubscription | where State -like 'Enabled' -WarningAction SilentlyContinue
-    $storageAccounts = Get-StorageAccounts -subscriptions $subscriptions
+    $storageAccounts = Invoke-AzGraphQuery -Query $baseQuery
 }
+
 If ($PSCmdlet.ParameterSetName -like 'mgscope'){
     Write-Host "Scope: $($PSCmdlet.ParameterSetName)"
-    $mg = Get-AzManagementGroup -GroupName $managementGroupName -Recurse -Expand -WarningAction SilentlyContinue
-    # Get All Subscriptions in the parent management group supplied
-    $mgSubs = @()
-    $mgSubs += Get-AzManagementGroupSubscription -GroupName $managementGroupName -WarningAction SilentlyContinue
-    # Get all Subscriptions in all child management groups
-    If ($mg.Children){
-        $childMg = $true
-        $childrenMgs = $mg.children | where Type -eq 'Microsoft.Management/managementGroups'
-        while($childMg) {
-            $childMg = $false
-            ForEach ($childrenMg in $childrenMgs){
-                If ($childrenMg.Children){
-                    $childMg = $true
-                    $childrenMgs = $childrenMg.Children | where Type -eq 'Microsoft.Management/managementGroups'
-                }
-                $mgSubs += Get-AzManagementGroupSubscription -GroupName $childrenMg.Name -WarningAction SilentlyContinue
-            }
-        }
-    }
-    $subscriptions = @()
-    $mgSubs | % {$subscriptions += Get-AzSubscription -SubscriptionId $_.Id.split('/')[-1] -WarningAction SilentlyContinue}
-    $storageAccounts = Get-StorageAccounts -subscriptions $subscriptions
+     $storageAccounts = Invoke-AzGraphQuery -Query $baseQuery -managementGroup $managementGroupName
 }
+
 If ($PSCmdlet.ParameterSetName -like 'subscope'){
         Write-Host "Scope: $($PSCmdlet.ParameterSetName)"
         If ($subscriptionId -match ','){
-            $subscriptions += $subscriptionId.split(',').trim() | % {Get-AzSubscription -SubscriptionId $_ -WarningAction SilentlyContinue}
-        }else{
-            $subscriptions += $subscriptionId | % {Get-AzSubscription -SubscriptionId $_ -WarningAction SilentlyContinue}
+            $subscriptionId = $subscriptionId.Replace(',',"','")
         }
-        $storageAccounts = Get-StorageAccounts -subscriptions $subscriptions
+
+        $subQuery = $baseQuery.Replace("| where type =~ 'microsoft.storage/storageaccounts'","| where type =~ 'microsoft.storage/storageaccounts' | where subscriptionId in ('$subscriptionId')")
+        $storageAccounts = Invoke-AzGraphQuery -Query $subQuery
 }
+
 If ($PSCmdlet.ParameterSetName -like 'resourcegroupscope'){
     Write-Host "Scope: $($PSCmdlet.ParameterSetName)"
-    $subscriptions = Get-AzSubscription -SubscriptionId $subscriptionId
-    $storageAccounts = Get-StorageAccounts -subscriptions $subscriptions | where ResourceGroupName -Like $resourceGroupName
-
+    $subQuery = $baseQuery.Replace("| where type =~ 'microsoft.storage/storageaccounts'","| where type =~ 'microsoft.storage/storageaccounts' | where subscriptionId =~ '$subscriptionId' | where resourceGroup =~ '$resourceGroupName'")
+    $storageAccounts = Invoke-AzGraphQuery -Query $subQuery
 }
+
 If ($PSCmdlet.ParameterSetName -like 'storageAccountScope') {
     Write-Host "Scope: $($PSCmdlet.ParameterSetName)"
-    $subscriptions = Get-AzSubscription -SubscriptionId $subscriptionId
-    $storageAccounts = Get-StorageAccounts -subscriptions $subscriptions | Where-Object {$_.ResourceGroupName -Like $resourceGroupName -and $_.StorageAccountName -like $storageAccountName}
+    $subQuery = $baseQuery.Replace("| where type =~ 'microsoft.storage/storageaccounts'","| where type =~ 'microsoft.storage/storageaccounts' | where subscriptionId =~ '$subscriptionId' | where resourceGroup =~ '$resourceGroupName' | where name =~ '$storageAccountName'") 
+    $storageAccounts = Invoke-AzGraphQuery -Query $subQuery
 }
 
 $report = @()
@@ -171,7 +185,7 @@ $blobMetricFilter = (New-AzMetricFilter -Dimension 'ApiName' -Operator eq -Value
 Write-Host ('Found a total of {0} storage Accounts' -f $storageAccounts.Count) -ForegroundColor Yellow
 ForEach ($storageAccount in $storageAccounts){
     If((Get-AzContext).Subscription.Id -notlike $storageAccount.SubscriptionId){
-        Set-AzContext -subscriptionId $storageAccount.SubscriptionId | Out-Null
+        Set-AzContext -subscriptionId $storageAccount.SubscriptionId -WarningAction SilentlyContinue | Out-Null
     }
     $totalBlobIngress30dayBytes = $null
     $totalBlobIngress30dayMB = $null
@@ -265,6 +279,6 @@ Write-Host ('Total Monthly Defender for Storage Costs: {0}' -f $totals.allAccoun
 Write-Host ('Total Monthly Transactions Overage Costs: {0}' -f $totals.allAccountsTotaltransactionOverageCost) -ForegroundColor Blue
 Write-Host ('Total Monthly Malware Scanning Costs: {0}' -f $totals.allAccountsTotalmalwareScanningCost) -ForegroundColor Blue
 
-$report | Export-CSV -Path .\defenderforstorage_estimates.csv -Force
+$report | Export-CSV -Path .\defenderforstorage_estimates.csv -Force -NoTypeInformation
 
 Write-Host ('CSV file created with estimates: {0}\{1}' -f $(pwd).path, 'defenderforstorage_estimates.csv') -ForegroundColor Yellow
