@@ -111,7 +111,7 @@
                   "apiVersion": "2022-11-10",
                   "location": "[parameters('location')]",
                   "dependsOn": [
-                    "[concat('Microsoft.HybridCompute/machines/', parameters('vmName'), '/extensions'/WindowsAgent.SqlServer')]"
+                    "[concat('Microsoft.HybridCompute/machines/', parameters('vmName'), '/extensions/WindowsAgent.SqlServer')]"
                   ],
                   "tags": {
                     "createdBy": "MicrosoftDefenderForSQL"
