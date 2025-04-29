@@ -98,7 +98,7 @@
                   "apiVersion": "2023-03-01",
                   "location": "[parameters('location')]",
                   "dependsOn": [
-                    "[concat('Microsoft.Compute/virtualMachines/', parameters('vmName'), '/', 'SqlIaasExtension')]"
+                    "[concat('Microsoft.Compute/virtualMachines/', parameters('vmName'), '/extensions/SqlIaasExtension')]"
                   ],
                   "tags": {
                     "createdBy": "MicrosoftDefenderForSQL"
