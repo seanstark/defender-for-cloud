@@ -94,20 +94,23 @@
               "resources": [
                 {
                   "type": "Microsoft.HybridCompute/machines/extensions",
-                  "name": "[concat(parameters('vmName'), '/', 'WindowsAgent.SqlServer')]",
-                  "apiVersion": "2022-11-10",
+                  "apiVersion": "2021-05-20",
+                  "name": "[concat(parameters('vmName'), '/WindowsAgent.SqlServer')]",
                   "location": "[parameters('location')]",
                   "properties": {
                     "publisher": "Microsoft.AzureData",
                     "type": "WindowsAgent.SqlServer",
-                    "typeHandlerVersion": "2.0",
                     "autoUpgradeMinorVersion": true,
-                    "enableAutomaticUpgrade": true
+                    "settings": {
+                      "SqlManagement": {
+                        "IsEnabled": true
+                      }
+                    }
                   }
                 },
                 {
                   "type": "Microsoft.HybridCompute/machines/extensions",
-                  "name": "[concat(parameters('vmName'), '/', 'MicrosoftDefenderForSQL')]",
+                  "name": "[concat(parameters('vmName'), '/MicrosoftDefenderForSQL')]",
                   "apiVersion": "2022-11-10",
                   "location": "[parameters('location')]",
                   "dependsOn": [
