@@ -4,7 +4,7 @@
     "mode": "Indexed",
     "description": "Deploys the Microsoft Defender for SQL and SQL IaaS Extension to Arc-enabled SQL Windows Servers to support Defender for SQL on Arc-enabled SQL Windows Servers.",
     "metadata": {
-        "category": "Security Center",
+        "category": "Security Center"
     },
     "version": "1.0.0",
     "parameters": {
