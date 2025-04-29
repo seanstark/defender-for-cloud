@@ -1,0 +1,63 @@
+{
+  "mode": "All",
+  "policyRule": {
+    "if": {
+      "field": "type",
+      "equals": "Microsoft.Resources/subscriptions"
+    },
+    "then": {
+      "effect": "[parameters('effect')]",
+      "details": {
+        "type": "Microsoft.Features/featureProviders/subscriptionFeatureRegistrations",
+        "name": "Microsoft.SqlVirtualMachine/BulkRegistration",
+        "roleDefinitionIds": [
+          "/providers/microsoft.authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c"
+        ],
+        "existenceCondition": {
+          "field": "Microsoft.Features/featureProviders/subscriptionFeatureRegistrations/state",
+          "equals": "Registered"
+        },
+        "deploymentScope": "subscription",
+        "deployment": {
+          "properties": {
+            "parameters": {},
+            "mode": "incremental",
+            "template": {
+              "parameters": {},
+              "resources": [
+                {
+                  "type": "Microsoft.Features/featureProviders/subscriptionFeatureRegistrations",
+                  "properties": {
+                    "featureName": "BulkRegistration",
+                    "state": "Registered",
+                    "providerNamespace": "Microsoft.SqlVirtualMachine"
+                  },
+                  "name": "Microsoft.SqlVirtualMachine/BulkRegistration",
+                  "apiVersion": "2021-07-01"
+                }
+              ],
+              "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+              "contentVersion": "1.0.0.0"
+            }
+          },
+          "location": "West Central US"
+        }
+      }
+    }
+  },
+  "parameters": {
+    "effect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect",
+        "description": "Enable or disable the execution of the policy"
+      },
+      "allowedValues": [
+        "AuditIfNotExists",
+        "DeployIfNotExists",
+        "Disabled"
+      ],
+      "defaultValue": "DeployIfNotExists"
+    }
+  }
+}
