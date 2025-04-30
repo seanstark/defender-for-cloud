@@ -2,6 +2,9 @@
 # Overview
 These custom Azure Policies will configure and deploy Defender for SQL on virtual machines using the new SQL IaaS Extension method.
 
+> [!IMPORTANT]
+> You need the custom policies here and the Built-in ones to ensure you have you have everything configured correctly. 
+
 # How to use
 1. Deploy the custom policies first
 2. Create a new Azure Policy Initiative Definition with all the custom and Built-in policy definitions below
