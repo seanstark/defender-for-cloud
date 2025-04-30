@@ -7,7 +7,7 @@ These custom Azure Policies will configure and deploy Defender for SQL on virtua
 
 - [Deployment Scoping](#deployment-scoping)
 - [How to use](#how-to-use)
-- [All SQL Servers](#all-sql-servers)
+- [Target All SQL Servers](#all-sql-servers)
    * [Deploy to Azure using PowerShell](#deploy-to-azure-using-powershell)
    * [Deploy to Azure using the portal](#deploy-to-azure-using-the-portal)
 - [Scoped Deployment](#scoped-deployment)
@@ -21,7 +21,7 @@ If you would like to deploy Defender for SQL on machines to only specific SQL se
 1. Deploy the custom policies first
 2. Create a new Azure Policy Initiative Definition with all the custom and Built-in policy definitions below
 
-# All SQL Servers
+# Target All SQL Servers
 
 | Policy Name | Description | Type |
 |---|---| --- |
