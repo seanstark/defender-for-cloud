@@ -3,11 +3,25 @@
 These custom Azure Policies will configure and deploy Defender for SQL on virtual machines using the new SQL IaaS Extension method.
 
 > [!IMPORTANT]
-> You need the custom policies here and the **Built-in** ones to ensure you have you have everything configured correctly. 
+> You need the custom policies here and the **Built-in** ones to ensure you have you have everything configured correctly.
+
+- [Deployment Scoping](#deployment-scoping)
+- [How to use](#how-to-use)
+- [All SQL Servers](#all-sql-servers)
+   * [Deploy to Azure using PowerShell](#deploy-to-azure-using-powershell)
+   * [Deploy to Azure using the portal](#deploy-to-azure-using-the-portal)
+- [Scoped Deployment](#scoped-deployment)
+   * [Deploy to Azure using PowerShell](#deploy-to-azure-using-powershell-1)
+   * [Deploy to Azure using the portal](#deploy-to-azure-using-the-portal-1)
+
+# Deployment Scoping
+If you would like to deploy Defender for SQL on machines to only specific SQL servers you will need to disable the plan at the subscription level and enable the plan at the individual SQL server resource level. To facilitate this you will need to tag individual SQL servers that you want the plan enabled on and leverage the policies under the Scoped Deployment section. 
 
 # How to use
 1. Deploy the custom policies first
 2. Create a new Azure Policy Initiative Definition with all the custom and Built-in policy definitions below
+
+# All SQL Servers
 
 | Policy Name | Description | Type |
 |---|---| --- |
@@ -36,3 +50,23 @@ New-AzPolicyDefinition -Name $(New-Guid) -Policy 'https://raw.githubusercontent.
 | Configure Automatic registration of the SQL IaaS Agent extension | [[Deploy to Azure]](https://portal.azure.com/#blade/Microsoft_Azure_Policy/CreatePolicyDefinitionBlade/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fseanstark%2Fdefender-for-cloud%2Frefs%2Fheads%2Fmain%2Fdefender%2520for%2520sql%2Fazure-policies%2Farm-templates%2FConfigure%2520Automatic%2520registration%2520of%2520the%2520SQL%2520IaaS%2520Agent%2520extension.json)|
 | Deploy Microsoft Defender for SQL to Arc-enabled SQL Windows Servers | [[Deploy to Azure]](https://portal.azure.com/#blade/Microsoft_Azure_Policy/CreatePolicyDefinitionBlade/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fseanstark%2Fdefender-for-cloud%2Frefs%2Fheads%2Fmain%2Fdefender%2520for%2520sql%2Fazure-policies%2Farm-templates%2FDeploy%2520Microsoft%2520Defender%2520for%2520SQL%2520to%2520Arc-enabled%2520SQL%2520Windows%2520Servers.json) |
 | Deploy Microsoft Defender for SQL to SQL Windows Virtual Machines | [[Deploy to Azure]](https://portal.azure.com/#blade/Microsoft_Azure_Policy/CreatePolicyDefinitionBlade/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fseanstark%2Fdefender-for-cloud%2Frefs%2Fheads%2Fmain%2Fdefender%2520for%2520sql%2Fazure-policies%2Farm-templates%2FDeploy%2520Microsoft%2520Defender%2520for%2520SQL%2520to%2520SQL%2520Windows%2520Virtual%2520Machines.json) |
+
+# Scoped Deployment
+In progress
+| Policy Name | Description | Type |
+|---|---| --- |
+| Configure Automatic registration of the SQL IaaS Agent extension | By default, Azure VMs with SQL Server 2016 or later are automatically registered with the SQL IaaS Agent extension when detected by the CEIP service. You can enable the automatic registration feature for your subscription to easily and automatically register any SQL Server VMs not picked up by the CEIP service, such as older versions of SQL Server. | Custom |
+
+## Deploy to Azure using PowerShell
+In progress
+``` powershell
+
+New-AzPolicyDefinition -Name $(New-Guid) -Policy 'https://raw.githubusercontent.com/seanstark/defender-for-cloud/refs/heads/main/defender%20for%20sql/azure-policies/arm-templates/Configure%20Automatic%20registration%20of%20the%20SQL%20IaaS%20Agent%20extension.json'
+
+```
+
+## Deploy to Azure using the portal
+In progress
+| Policy Name | Deploy Link |
+|---|---|
+| Configure Automatic registration of the SQL IaaS Agent extension | [[Deploy to Azure]](https://portal.azure.com/#blade/Microsoft_Azure_Policy/CreatePolicyDefinitionBlade/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fseanstark%2Fdefender-for-cloud%2Frefs%2Fheads%2Fmain%2Fdefender%2520for%2520sql%2Fazure-policies%2Farm-templates%2FConfigure%2520Automatic%2520registration%2520of%2520the%2520SQL%2520IaaS%2520Agent%2520extension.json)|
