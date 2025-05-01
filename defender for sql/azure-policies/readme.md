@@ -38,6 +38,19 @@ New-AzPolicyDefinition -Name $(New-Guid) -Policy 'https://raw.githubusercontent.
 
 New-AzPolicyDefinition -Name $(New-Guid) -Policy 'https://raw.githubusercontent.com/seanstark/defender-for-cloud/refs/heads/main/defender%20for%20sql/azure-policies/arm-templates/Deploy%20Microsoft%20Defender%20for%20SQL%20to%20SQL%20Windows%20Virtual%20Machines.json'
 
+# Create the Policy Initiative Definition
+$policies = Get-AzPolicyDefinition | Where-Object {$_.DisplayName -in (
+    'Configure Automatic registration of the SQL IaaS Agent extension',
+    'Deploy Microsoft Defender for SQL to Arc-enabled SQL Windows Servers',
+    'Deploy Microsoft Defender for SQL to SQL Windows Virtual Machines',    
+    'Configure Azure Defender for SQL servers on machines to be enabled',
+    'Assign System Assigned identity to SQL Virtual Machines'
+)}
+
+New-AzPolicySetDefinition -Name $(New-Guid) -DisplayName 'Deploy Defender for SQL on Machines to All SQL Servers' `
+-PolicyDefinition $($policies | Select-Object @{Name='policyDefinitionId';Expression={$_.Id}}| ConvertTo-Json -Depth 10) `
+-Metadata '{"category":"Security Center"}'
+
 ```
 
 ## Deploy to Azure using the portal
