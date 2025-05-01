@@ -1,177 +1,169 @@
 {
-    "displayName": "Deploy Microsoft Defender for SQL to only specified Arc-enabled SQL Windows Servers",
-    "policyType": "Custom",
-    "mode": "Indexed",
-    "description": "Deploys the Microsoft Defender for SQL and SQL IaaS Extension to Arc-enabled SQL Windows Servers to support Defender for SQL on Arc-enabled SQL Windows Servers.",
-    "metadata": {
-        "category": "Security Center"
+  "mode": "Indexed",
+  "policyRule": {
+    "if": {
+      "allOf": [
+        {
+          "field": "type",
+          "equals": "Microsoft.HybridCompute/machines"
+        },
+        {
+          "field": "Microsoft.HybridCompute/machines/osName",
+          "equals": "Windows"
+        },
+        {
+          "field": "Microsoft.HybridCompute/machines/mssqlDiscovered",
+          "equals": "true"
+        },
+        {
+          "field": "[concat('tags[', parameters('inclusionTagName'), ']')]",
+          "in": "[parameters('inclusionTagValues')]"
+        }
+      ]
     },
-    "version": "1.0.0",
-    "parameters": {
-        "effect": {
-            "type": "String",
-            "metadata": {
-                "displayName": "Effect",
-                "description": "Enable or disable the execution of the policy"
+    "then": {
+      "effect": "[parameters('effect')]",
+      "details": {
+        "type": "Microsoft.HybridCompute/machines/extensions",
+        "name": "[concat(field('Name'), '/MicrosoftDefenderForSQL')]",
+        "evaluationDelay": "AfterProvisioning",
+        "existenceCondition": {
+          "anyOf": [
+            {
+              "allOf": [
+                {
+                  "field": "Microsoft.HybridCompute/machines/extensions/type",
+                  "equals": "WindowsAgent.SqlServer"
+                },
+                {
+                  "field": "Microsoft.HybridCompute/machines/extensions/publisher",
+                  "equals": "Microsoft.AzureData"
+                },
+                {
+                  "field": "Microsoft.HybridCompute/machines/extensions/provisioningState",
+                  "in": [
+                    "Succeeded",
+                    "Provisioning succeeded"
+                  ]
+                }
+              ]
             },
-            "allowedValues": [
-                "DeployIfNotExists",
-                "Disabled"
-            ],
-            "defaultValue": "DeployIfNotExists"
-        },
-        "inclusionTagName": {
-            "type": "String",
-            "metadata": {
-                "displayName": "Inclusion Tag Name",
-                "description": "Name of the tag to use for including SQL Servers. Tags need to be set on the SQL Server, not the virtual machine"
-            }
-        },
-        "inclusionTagValues": {
-            "type": "Array",
-            "metadata": {
-                "displayName": "Inclusion Tag Values",
-                "description": "Value of the tag to use for including SQL Servers. Tags need to be set on the SQL Server, not the virtual machine"
-            }
-        }
-    },
-    "policyRule": {
-        "if": {
-            "allOf": [
+            {
+              "allOf": [
                 {
-                    "field": "type",
-                    "equals": "Microsoft.HybridCompute/machines"
+                  "field": "Microsoft.HybridCompute/machines/extensions/type",
+                  "equals": "AdvancedThreatProtection.Windows"
                 },
                 {
-                    "field": "Microsoft.HybridCompute/machines/osName",
-                    "equals": "Windows"
+                  "field": "Microsoft.HybridCompute/machines/extensions/publisher",
+                  "equals": "Microsoft.Azure.AzureDefenderForSQL"
                 },
                 {
-                    "field": "Microsoft.HybridCompute/machines/mssqlDiscovered",
-                    "equals": "true"
-                },
-                {
-                    "field": "[concat('tags[', parameters('inclusionTagName'), ']')]",
-                    "in": "[parameters('inclusionTagValues')]"
+                  "field": "Microsoft.HybridCompute/machines/extensions/provisioningState",
+                  "in": [
+                    "Succeeded",
+                    "Provisioning succeeded"
+                  ]
                 }
-            ]
+              ]
+            }
+          ]
         },
-        "then": {
-            "effect": "[parameters('effect')]",
-            "details": {
-                "type": "Microsoft.HybridCompute/machines/extensions",
-                "name": "[concat(field('Name'), '/MicrosoftDefenderForSQL')]",
-                "evaluationDelay": "AfterProvisioning",
-                "existenceCondition": {
-                    "anyOf": [
-                        {
-                            "allOf": [
-                                {
-                                    "field": "Microsoft.HybridCompute/machines/extensions/type",
-                                    "equals": "WindowsAgent.SqlServer"
-                                },
-                                {
-                                    "field": "Microsoft.HybridCompute/machines/extensions/publisher",
-                                    "equals": "Microsoft.AzureData"
-                                },
-                                {
-                                    "field": "Microsoft.HybridCompute/machines/extensions/provisioningState",
-                                    "in": [
-                                        "Succeeded",
-                                        "Provisioning succeeded"
-                                    ]
-                                }
-                            ]
-                        },
-                        {
-                            "allOf": [
-                                {
-                                    "field": "Microsoft.HybridCompute/machines/extensions/type",
-                                    "equals": "AdvancedThreatProtection.Windows"
-                                },
-                                {
-                                    "field": "Microsoft.HybridCompute/machines/extensions/publisher",
-                                    "equals": "Microsoft.Azure.AzureDefenderForSQL"
-                                },
-                                {
-                                    "field": "Microsoft.HybridCompute/machines/extensions/provisioningState",
-                                    "in": [
-                                        "Succeeded",
-                                        "Provisioning succeeded"
-                                    ]
-                                }
-                            ]
-                        }
-                    ]
+        "roleDefinitionIds": [
+          "/providers/Microsoft.Authorization/roleDefinitions/cd570a14-e51a-42ad-bac8-bafd67325302"
+        ],
+        "deployment": {
+          "properties": {
+            "mode": "incremental",
+            "parameters": {
+              "location": {
+                "value": "[field('location')]"
+              },
+              "vmName": {
+                "value": "[field('Name')]"
+              }
+            },
+            "template": {
+              "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+              "contentVersion": "1.0.0.0",
+              "parameters": {
+                "location": {
+                  "type": "string"
                 },
-                "roleDefinitionIds": [
-                    "/providers/Microsoft.Authorization/roleDefinitions/cd570a14-e51a-42ad-bac8-bafd67325302"
-                ],
-                "deployment": {
-                    "properties": {
-                        "mode": "incremental",
-                        "parameters": {
-                            "location": {
-                                "value": "[field('location')]"
-                            },
-                            "vmName": {
-                                "value": "[field('Name')]"
-                            }
-                        },
-                        "template": {
-                            "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-                            "contentVersion": "1.0.0.0",
-                            "parameters": {
-                                "location": {
-                                    "type": "string"
-                                },
-                                "vmName": {
-                                    "type": "string"
-                                }
-                            },
-                            "variables": {
-                            },
-                            "resources": [
-                                {
-                                    "type": "Microsoft.HybridCompute/machines/extensions",
-                                    "apiVersion": "2021-05-20",
-                                    "name": "[concat(parameters('vmName'), '/WindowsAgent.SqlServer')]",
-                                    "location": "[parameters('location')]",
-                                    "properties": {
-                                        "publisher": "Microsoft.AzureData",
-                                        "type": "WindowsAgent.SqlServer",
-                                        "autoUpgradeMinorVersion": true,
-                                        "settings": {
-                                            "SqlManagement": {
-                                                "IsEnabled": true
-                                            }
-                                        }
-                                    }
-                                },
-                                {
-                                    "type": "Microsoft.HybridCompute/machines/extensions",
-                                    "name": "[concat(parameters('vmName'), '/MicrosoftDefenderForSQL')]",
-                                    "apiVersion": "2022-11-10",
-                                    "location": "[parameters('location')]",
-                                    "dependsOn": [
-                                        "[concat('Microsoft.HybridCompute/machines/', parameters('vmName'), '/extensions/WindowsAgent.SqlServer')]"
-                                    ],
-                                    "tags": {
-                                        "createdBy": "MicrosoftDefenderForSQL"
-                                    },
-                                    "properties": {
-                                        "publisher": "Microsoft.Azure.AzureDefenderForSQL",
-                                        "type": "AdvancedThreatProtection.Windows",
-                                        "typeHandlerVersion": "2.0",
-                                        "autoUpgradeMinorVersion": true,
-                                        "enableAutomaticUpgrade": true
-                                    }
-                                }
-                            ]
-                        }
+                "vmName": {
+                  "type": "string"
+                }
+              },
+              "variables": {},
+              "resources": [
+                {
+                  "type": "Microsoft.HybridCompute/machines/extensions",
+                  "apiVersion": "2021-05-20",
+                  "name": "[concat(parameters('vmName'), '/WindowsAgent.SqlServer')]",
+                  "location": "[parameters('location')]",
+                  "properties": {
+                    "publisher": "Microsoft.AzureData",
+                    "type": "WindowsAgent.SqlServer",
+                    "autoUpgradeMinorVersion": true,
+                    "settings": {
+                      "SqlManagement": {
+                        "IsEnabled": true
+                      }
                     }
+                  }
+                },
+                {
+                  "type": "Microsoft.HybridCompute/machines/extensions",
+                  "name": "[concat(parameters('vmName'), '/MicrosoftDefenderForSQL')]",
+                  "apiVersion": "2022-11-10",
+                  "location": "[parameters('location')]",
+                  "dependsOn": [
+                    "[concat('Microsoft.HybridCompute/machines/', parameters('vmName'), '/extensions/WindowsAgent.SqlServer')]"
+                  ],
+                  "tags": {
+                    "createdBy": "MicrosoftDefenderForSQL"
+                  },
+                  "properties": {
+                    "publisher": "Microsoft.Azure.AzureDefenderForSQL",
+                    "type": "AdvancedThreatProtection.Windows",
+                    "typeHandlerVersion": "2.0",
+                    "autoUpgradeMinorVersion": true,
+                    "enableAutomaticUpgrade": true
+                  }
                 }
+              ]
             }
+          }
         }
+      }
     }
+  },
+  "parameters": {
+    "effect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect",
+        "description": "Enable or disable the execution of the policy"
+      },
+      "allowedValues": [
+        "DeployIfNotExists",
+        "Disabled"
+      ],
+      "defaultValue": "DeployIfNotExists"
+    },
+    "inclusionTagName": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Inclusion Tag Name",
+        "description": "Name of the tag to use for including SQL Servers. Tags need to be set on the SQL Server, not the virtual machine"
+      }
+    },
+    "inclusionTagValues": {
+      "type": "Array",
+      "metadata": {
+        "displayName": "Inclusion Tag Values",
+        "description": "Value of the tag to use for including SQL Servers. Tags need to be set on the SQL Server, not the virtual machine"
+      }
+    }
+  }
 }
