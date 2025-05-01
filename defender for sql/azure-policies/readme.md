@@ -69,6 +69,8 @@ New-AzPolicyDefinition -Name $(New-Guid) -Policy 'https://raw.githubusercontent.
 
 New-AzPolicyDefinition -Name $(New-Guid) -Policy 'https://raw.githubusercontent.com/seanstark/defender-for-cloud/refs/heads/main/defender%20for%20sql/azure-policies/arm-templates/Deploy%20Microsoft%20Defender%20for%20SQL%20to%20only%20specified%20Arc-enabled%20SQL%20Windows%20Servers.json'
 
+New-AzPolicyDefinition -Name $(New-Guid) -Policy 'https://raw.githubusercontent.com/seanstark/defender-for-cloud/refs/heads/main/defender%20for%20sql/azure-policies/arm-templates/Deploy%20Microsoft%20Defender%20for%20SQL%20to%20only%20specified%20SQL%20Windows%20Virtual%20machines.json'
+
 ```
 
 ## Deploy to Azure using the portal
@@ -78,4 +80,4 @@ In progress
 | Configure Automatic registration of the SQL IaaS Agent extension | [[Deploy to Azure]](https://portal.azure.com/#blade/Microsoft_Azure_Policy/CreatePolicyDefinitionBlade/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fseanstark%2Fdefender-for-cloud%2Frefs%2Fheads%2Fmain%2Fdefender%2520for%2520sql%2Fazure-policies%2Farm-templates%2FConfigure%2520Automatic%2520registration%2520of%2520the%2520SQL%2520IaaS%2520Agent%2520extension.json)|
 | Disable the Microsoft Defender for SQL servers on machines plan | [[Deploy to Azure]](https://portal.azure.com/#blade/Microsoft_Azure_Policy/CreatePolicyDefinitionBlade/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fseanstark%2Fdefender-for-cloud%2Frefs%2Fheads%2Fmain%2Fdefender%2520for%2520sql%2Fazure-policies%2Farm-templates%2FDisable%2520the%2520Microsoft%2520Defender%2520for%2520SQL%2520servers%2520on%2520machines%2520plan.json) |
 | Deploy Microsoft Defender for SQL to only specified Arc-enabled SQL Windows Servers | [[Deploy to Azure]](https://portal.azure.com/#blade/Microsoft_Azure_Policy/CreatePolicyDefinitionBlade/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fseanstark%2Fdefender-for-cloud%2Frefs%2Fheads%2Fmain%2Fdefender%2520for%2520sql%2Fazure-policies%2Farm-templates%2FDeploy%2520Microsoft%2520Defender%2520for%2520SQL%2520to%2520only%2520specified%2520Arc-enabled%2520SQL%2520Windows%2520Servers.json) |
-| Deploy Microsoft Defender for SQL to only specified SQL Windows Virtual machines | [[Deploy to Azure]](https://portal.azure.com/#blade/Microsoft_Azure_Policy/CreatePolicyDefinitionBlade/uri/) |
+| Deploy Microsoft Defender for SQL to only specified SQL Windows Virtual machines | [[Deploy to Azure]](https://portal.azure.com/#blade/Microsoft_Azure_Policy/CreatePolicyDefinitionBlade/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fseanstark%2Fdefender-for-cloud%2Frefs%2Fheads%2Fmain%2Fdefender%2520for%2520sql%2Fazure-policies%2FDeploy%2520Microsoft%2520Defender%2520for%2520SQL%2520to%2520only%2520specified%2520SQL%2520Windows%2520Virtual%2520machines.json) |
