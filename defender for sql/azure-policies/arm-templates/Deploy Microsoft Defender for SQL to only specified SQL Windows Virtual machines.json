@@ -1,0 +1,168 @@
+{
+    "displayName": "Deploy Microsoft Defender for SQL to only specified SQL Windows Virtual machines",
+    "policyType": "Custom",
+    "mode": "Indexed",
+    "description": "Deploys the Microsoft Defender for SQL and SQL IaaS Extension to SQL Windows Virtual Machines to support Defender for SQL on virtual machines.",
+    "metadata": {
+        "category": "Security Center"
+    },
+    "version": "1.0.0",
+    "parameters": {
+        "effect": {
+            "type": "String",
+            "metadata": {
+                "displayName": "Effect",
+                "description": "Enable or disable the execution of the policy"
+            },
+            "allowedValues": [
+                "DeployIfNotExists",
+                "Disabled"
+            ],
+            "defaultValue": "DeployIfNotExists"
+        },
+        "inclusionTagName": {
+            "type": "String",
+            "metadata": {
+                "displayName": "Inclusion Tag Name",
+                "description": "Name of the tag to use for including SQL Servers. Tags need to be set on the SQL Server, not the virtual machine"
+            }
+        },
+        "inclusionTagValues": {
+            "type": "Array",
+            "metadata": {
+                "displayName": "Inclusion Tag Values",
+                "description": "Value of the tag to use for including SQL Servers. Tags need to be set on the SQL Server, not the virtual machine"
+            }
+        }
+    },
+    "policyRule": {
+        "if": {
+            "allOf": [
+                {
+                    "field": "type",
+                    "equals": "Microsoft.Compute/virtualMachines"
+                },
+                {
+                    "field": "Microsoft.Compute/virtualMachines/storageProfile.osDisk.osType",
+                    "equals": "Windows"
+                },
+                {
+                    "field": "[concat('tags[', parameters('inclusionTagName'), ']')]",
+                    "in": "[parameters('inclusionTagValues')]"
+                }
+            ]
+        },
+        "then": {
+            "effect": "[parameters('effect')]",
+            "details": {
+                "type": "Microsoft.Compute/virtualMachines/extensions",
+                "name": "MicrosoftDefenderForSQL",
+                "evaluationDelay": "AfterProvisioning",
+                "existenceCondition": {
+                    "anyOf": [
+                        {
+                            "allOf": [
+                                {
+                                    "field": "Microsoft.Compute/virtualMachines/extensions/type",
+                                    "equals": "SqlIaaSAgent"
+                                },
+                                {
+                                    "field": "Microsoft.Compute/virtualMachines/extensions/publisher",
+                                    "equals": "Microsoft.SqlServer.Management"
+                                },
+                                {
+                                    "field": "Microsoft.Compute/virtualMachines/extensions/provisioningState",
+                                    "in": [
+                                        "Succeeded",
+                                        "Provisioning succeeded"
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "allOf": [
+                                {
+                                    "field": "Microsoft.Compute/virtualMachines/extensions/type",
+                                    "equals": "AdvancedThreatProtection.Windows"
+                                },
+                                {
+                                    "field": "Microsoft.Compute/virtualMachines/extensions/publisher",
+                                    "equals": "Microsoft.Azure.AzureDefenderForSQL"
+                                },
+                                {
+                                    "field": "Microsoft.Compute/virtualMachines/extensions/provisioningState",
+                                    "in": [
+                                        "Succeeded",
+                                        "Provisioning succeeded"
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "roleDefinitionIds": [
+                    "/providers/Microsoft.Authorization/roleDefinitions/9980e02c-c2be-4d73-94e8-173b1dc7cf3c"
+                ],
+                "deployment": {
+                    "properties": {
+                        "mode": "incremental",
+                        "parameters": {
+                            "location": {
+                                "value": "[field('location')]"
+                            },
+                            "vmName": {
+                                "value": "[field('name')]"
+                            }
+                        },
+                        "template": {
+                            "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                            "contentVersion": "1.0.0.0",
+                            "parameters": {
+                                "location": {
+                                    "type": "string"
+                                },
+                                "vmName": {
+                                    "type": "string"
+                                }
+                            },
+                            "resources": [
+                                {
+                                    "type": "Microsoft.Compute/virtualMachines/extensions",
+                                    "name": "[concat(parameters('vmName'), '/', 'SqlIaasExtension')]",
+                                    "apiVersion": "2023-03-01",
+                                    "location": "[parameters('location')]",
+                                    "properties": {
+                                        "publisher": "Microsoft.SqlServer.Management",
+                                        "type": "SqlIaaSAgent",
+                                        "typeHandlerVersion": "2.0",
+                                        "autoUpgradeMinorVersion": true,
+                                        "enableAutomaticUpgrade": true
+                                    }
+                                },
+                                {
+                                    "type": "Microsoft.Compute/virtualMachines/extensions",
+                                    "name": "[concat(parameters('vmName'), '/', 'MicrosoftDefenderForSQL')]",
+                                    "apiVersion": "2023-03-01",
+                                    "location": "[parameters('location')]",
+                                    "dependsOn": [
+                                        "[concat('Microsoft.Compute/virtualMachines/', parameters('vmName'), '/extensions/SqlIaasExtension')]"
+                                    ],
+                                    "tags": {
+                                        "createdBy": "MicrosoftDefenderForSQL"
+                                    },
+                                    "properties": {
+                                        "publisher": "Microsoft.Azure.AzureDefenderForSQL",
+                                        "type": "AdvancedThreatProtection.Windows",
+                                        "typeHandlerVersion": "2.0",
+                                        "autoUpgradeMinorVersion": true,
+                                        "enableAutomaticUpgrade": true
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
