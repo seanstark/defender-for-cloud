@@ -2,8 +2,16 @@
   "mode": "Indexed",
   "policyRule": {
     "if": {
-      "field": "type",
-      "equals": "Microsoft.SqlVirtualMachine/SqlVirtualMachines"
+      "allOf": [
+        {
+          "field": "type",
+          "equals": "Microsoft.SqlVirtualMachine/SqlVirtualMachines"
+        },
+        {
+          "field": "Microsoft.SqlVirtualMachine/sqlVirtualMachines/osType",
+          "equals": "Windows"
+        }
+      ]
     },
     "then": {
       "effect": "[parameters('effect')]",
