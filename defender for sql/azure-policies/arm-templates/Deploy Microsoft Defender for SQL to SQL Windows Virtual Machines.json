@@ -27,10 +27,6 @@
                 {
                     "field": "type",
                     "equals": "Microsoft.SqlVirtualMachine/SqlVirtualMachines"
-                },
-                {
-                    "field": "Microsoft.SqlVirtualMachine/sqlVirtualMachines/osType",
-                    "equals": "Windows"
                 }
             ]
         },
@@ -46,18 +42,11 @@
                             "allOf": [
                                 {
                                     "field": "Microsoft.Compute/virtualMachines/extensions/type",
-                                    "equals": "SqlIaaSAgent"
+                                    "equals": "SqlIaaSAgentLinux"
                                 },
                                 {
                                     "field": "Microsoft.Compute/virtualMachines/extensions/publisher",
                                     "equals": "Microsoft.SqlServer.Management"
-                                },
-                                {
-                                    "field": "Microsoft.Compute/virtualMachines/extensions/provisioningState",
-                                    "in": [
-                                        "Succeeded",
-                                        "Provisioning succeeded"
-                                    ]
                                 }
                             ]
                         },
