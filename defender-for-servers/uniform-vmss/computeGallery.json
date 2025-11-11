@@ -1,0 +1,22 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "galleries_defenderforendpoint_name": {
+            "defaultValue": "defenderforendpoint",
+            "type": "String"
+        }
+    },
+    "variables": {},
+    "resources": [
+        {
+            "type": "Microsoft.Compute/galleries",
+            "apiVersion": "2024-03-03",
+            "name": "[parameters('galleries_defenderforendpoint_name')]",
+            "location": "westus2",
+            "properties": {
+                "identifier": {}
+            }
+        }
+    ]
+}
