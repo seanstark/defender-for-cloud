@@ -3,6 +3,8 @@
 
 Currently the autoprovising of Defender for Endpoint using the MDE.Linux/MDE.Windows extensions with Defender for Servers is not supported on Uniform Virtual Machine Scalesets. This solution leverages [Azure Compute VM Applications](https://learn.microsoft.com/azure/virtual-machines/vm-applications) to deploy the Defender for Endpoint agent on Windows and Linux Uniform Virtual Machine Scalesets. 
 
+> These steps leverage pre-built arm templates to deploy all the Prerequisites and VM Applications
+
 ## Prerequisites
 
 ### Step 1 - Deploy the Storage Account
@@ -12,6 +14,8 @@ Currently the autoprovising of Defender for Endpoint using the MDE.Linux/MDE.Win
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fseanstark%2Fdefender-for-cloud%2Frefs%2Fheads%2Fmain%2Fdefender-for-servers%2Funiform-vmss%2FstorageAccount.json)
 
 > After you create the storage account ensure you have the **Storage Blob Data Contributor** role assigned
+
+### Step 2 - Deploy the Azure Compute Galler
 
 ## Windows
 
