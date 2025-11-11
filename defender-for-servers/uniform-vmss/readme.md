@@ -41,5 +41,7 @@ Currently the autoprovising of Defender for Endpoint using the MDE.Linux/MDE.Win
    <img width="951" height="515" alt="image" src="https://github.com/user-attachments/assets/a3dbef11-1d6c-466e-9786-ef728f376a43" />
 
 2. Download the [installer bash script](https://github.com/microsoft/mdatp-xplat/blob/master/linux/installation/mde_installer.sh) provided in our public GitHub repository.
+3. Zip up the mde_installer.sh and MicrosoftDefenderATPOnboardingLinuxServer.py script into a single zip file
+4. Upload the zip file to the the **mde-linux** blob container
 
 
