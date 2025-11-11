@@ -9,7 +9,7 @@ Currently the autoprovising of Defender for Endpoint using the MDE.Linux/MDE.Win
 > [!IMPORTANT]
 > VM Applications leverage SAS tokens and require public access to the blob containers.
 
-[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://raw.githubusercontent.com/seanstark/defender-for-cloud/refs/heads/main/defender-for-servers/uniform-vmss/storageAccount.json)
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https://raw.githubusercontent.com/seanstark/defender-for-cloud/refs/heads/main/defender-for-servers/uniform-vmss/storageAccount.json)
 
 > After you create the storage account ensure you have the **Storage Blob Data Contributor** role assigned
 
