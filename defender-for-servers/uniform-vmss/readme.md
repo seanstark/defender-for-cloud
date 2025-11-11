@@ -5,6 +5,9 @@ Currently the autoprovising of Defender for Endpoint using the MDE.Linux/MDE.Win
 
 > These steps leverage pre-built arm templates to deploy all the Prerequisites and VM Applications
 
+## Overview of steps
+You will need to do a few prerequites steps before creating the Azure Compute Gallery
+
 ## Prerequisites
 
 ### Step 1 - Deploy the Storage Account
@@ -14,10 +17,6 @@ Currently the autoprovising of Defender for Endpoint using the MDE.Linux/MDE.Win
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fseanstark%2Fdefender-for-cloud%2Frefs%2Fheads%2Fmain%2Fdefender-for-servers%2Funiform-vmss%2FstorageAccount.json)
 
 > After you create the storage account ensure you have the **Storage Blob Data Contributor** role assigned
-
-### Step 2 - Deploy the Azure Compute Gallery
-
-[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fseanstark%2Fdefender-for-cloud%2Frefs%2Fheads%2Fmain%2Fdefender-for-servers%2Funiform-vmss%2FcomputeGallery.json)
 
 ## Windows
 
@@ -45,4 +44,6 @@ Currently the autoprovising of Defender for Endpoint using the MDE.Linux/MDE.Win
 > Name the zip file MicrosoftDefenderATPOnboardingLinuxServer.zip
 4. Upload the zip file to the the **mde-linux** blob container
 
+### Step 2 - Deploy the Azure Compute Gallery
 
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fseanstark%2Fdefender-for-cloud%2Frefs%2Fheads%2Fmain%2Fdefender-for-servers%2Funiform-vmss%2FcomputeGallery.json)
