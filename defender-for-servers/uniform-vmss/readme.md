@@ -30,8 +30,15 @@ Currently the autoprovising of Defender for Endpoint using the MDE.Linux/MDE.Win
 
 2. Unzip the **GatewayWindowsDefenderATPOnboardingPackage.zip** file and upload the **WindowsDefenderATPOnboardingScript.cmd** file to the **mde-windows** blob container
 
-### Step 2 - Create the VM Application
-
 ### Step 3 - Testing Deployment
 
-### Step 4 - Deploying at Scale using Azure Policy
+## Linux
+
+### Step 1 - Download the Linux Onboarding Script
+1. Download the Local Script (Python) onboarding script from the [Defender XDR Portal](https://security.microsoft.com/securitysettings/endpoints/onboarding)
+
+   <img width="951" height="515" alt="image" src="https://github.com/user-attachments/assets/a3dbef11-1d6c-466e-9786-ef728f376a43" />
+
+2. Download the [installer bash script](https://github.com/microsoft/mdatp-xplat/blob/master/linux/installation/mde_installer.sh) provided in our public GitHub repository.
+
+
