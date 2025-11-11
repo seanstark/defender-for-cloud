@@ -11,6 +11,8 @@ Currently the autoprovising of Defender for Endpoint using the MDE.Linux/MDE.Win
 
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://raw.githubusercontent.com/seanstark/defender-for-cloud/refs/heads/main/defender-for-servers/uniform-vmss/storageAccount.json)
 
+> After you create the storage account ensure you have the **Storage Blob Data Contributor** role assigned
+
 ## Windows
 
 ### Step 1 - Download the Windows Onboarding Script
