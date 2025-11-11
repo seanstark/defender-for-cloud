@@ -26,7 +26,8 @@ Currently the autoprovising of Defender for Endpoint using the MDE.Linux/MDE.Win
 > Use the Group Policy onboarding script to ensure duplicate devices are not created
 
 1. Download the correct Operating System version **Group Policy Deployment Method** onboarding script from the [Defender XDR Portal](https://security.microsoft.com/securitysettings/endpoints/onboarding)
-> <img width="997" height="631" alt="image" src="https://github.com/user-attachments/assets/e820de13-bfae-493c-b752-b4b15f6316d9" />
+
+   <img width="997" height="631" alt="image" src="https://github.com/user-attachments/assets/e820de13-bfae-493c-b752-b4b15f6316d9" />
 
 2. Unzip the **GatewayWindowsDefenderATPOnboardingPackage.zip** file and upload the **WindowsDefenderATPOnboardingScript.cmd** file to the **mde-windows** blob container
 
