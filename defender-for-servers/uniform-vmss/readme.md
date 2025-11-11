@@ -15,7 +15,9 @@ Currently the autoprovising of Defender for Endpoint using the MDE.Linux/MDE.Win
 
 > After you create the storage account ensure you have the **Storage Blob Data Contributor** role assigned
 
-### Step 2 - Deploy the Azure Compute Galler
+### Step 2 - Deploy the Azure Compute Gallery
+
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fseanstark%2Fdefender-for-cloud%2Frefs%2Fheads%2Fmain%2Fdefender-for-servers%2Funiform-vmss%2FcomputeGallery.json)
 
 ## Windows
 
