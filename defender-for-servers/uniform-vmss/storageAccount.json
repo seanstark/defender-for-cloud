@@ -26,14 +26,10 @@
                 "allowCrossTenantReplication": false,
                 "minimumTlsVersion": "TLS1_2",
                 "allowBlobPublicAccess": false,
-                "allowSharedKeyAccess": false,
+                "allowSharedKeyAccess": true,
                 "largeFileSharesState": "Enabled",
                 "networkAcls": {
                     "resourceAccessRules": [
-                        {
-                            "tenantId": "b15e9906-8811-4a69-b828-e27ce77d04f2",
-                            "resourceId": "/subscriptions/9ebcb583-7adb-44ea-b688-06f1de624cc1/providers/Microsoft.Security/datascanners/StorageDataScanner"
-                        }
                     ],
                     "bypass": "AzureServices",
                     "virtualNetworkRules": [],
