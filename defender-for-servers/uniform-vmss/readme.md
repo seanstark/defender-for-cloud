@@ -45,7 +45,7 @@ You will need to do a few prerequites steps before creating the Azure Compute Ga
    <img width="951" height="515" alt="image" src="https://github.com/user-attachments/assets/a3dbef11-1d6c-466e-9786-ef728f376a43" />
 
 2. Download the [installer bash script](https://github.com/microsoft/mdatp-xplat/blob/master/linux/installation/mde_installer.sh) provided in our public GitHub repository.
-3. TAR the mde_installer.sh and MicrosoftDefenderATPOnboardingLinuxServer.py script into a single TAR file called **mde_installer.tar**
+3. Compress the mde_installer.sh and MicrosoftDefenderATPOnboardingLinuxServer.py script into a single **TAR** file called **mde_installer.tar**
 4. Upload the mde_installer.tar file to the the **mde-linux** blob container
 
 ### Step 2 - Deploy the Azure Compute Gallery
