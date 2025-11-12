@@ -4,14 +4,12 @@
 Currently the autoprovising of Defender for Endpoint using the MDE.Linux/MDE.Windows extensions with Defender for Servers is not supported on Uniform Virtual Machine Scalesets. This solution leverages [Azure Compute VM Applications](https://learn.microsoft.com/azure/virtual-machines/vm-applications) to deploy the Defender for Endpoint agent on Windows and Linux Uniform Virtual Machine Scalesets. 
 
 > [!IMPORTANT]
-> VM Applications leverage Storage Account SAS tokens and require public access to the blob containers. If you have policies in place that prevent Storage account key access and Public network access this solution will not work
+> VM Applications leverage Storage Account SAS tokens and require storage account public network access. If you have Azure Policies in place that prevent Storage account key access and Public network access this solution will not work.
 
 ## Overview of steps
 You will need to do a few prerequites steps before creating the Azure Compute Gallery
 1. Create an Azure Storage Account to store the VM Application files
 2. Upload the necessary Defender for Endpoint onboarding and installation scripts for Windows and Linux to the storage account
-
-## Prerequisites
 
 ### Step 1 - Deploy the Storage Account
 > [!IMPORTANT]
@@ -21,9 +19,10 @@ You will need to do a few prerequites steps before creating the Azure Compute Ga
 
 > After you create the storage account ensure you have the **Storage Blob Data Contributor** role assigned
 
-## Windows
+### Step 2 - Download the Defender for Endpoint onboarding and installation scripts
 
-### Step 1 - Download the Windows Onboarding Script
+#### Windows
+
 > [!IMPORTANT]
 > Use the Group Policy onboarding script to ensure duplicate devices are not created
 
@@ -33,11 +32,8 @@ You will need to do a few prerequites steps before creating the Azure Compute Ga
 
 2. Unzip the **GatewayWindowsDefenderATPOnboardingPackage.zip** file and upload the **WindowsDefenderATPOnboardingScript.cmd** file to the **mde-windows** blob container
 
-### Step 3 - Testing Deployment
+#### Linux
 
-## Linux
-
-### Step 1 - Download the Linux Onboarding Script
 1. Download the Local Script (Python) onboarding script from the [Defender XDR Portal](https://security.microsoft.com/securitysettings/endpoints/onboarding)
 
    <img width="951" height="515" alt="image" src="https://github.com/user-attachments/assets/a3dbef11-1d6c-466e-9786-ef728f376a43" />
