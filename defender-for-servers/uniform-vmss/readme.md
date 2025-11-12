@@ -5,8 +5,13 @@ Currently the autoprovising of Defender for Endpoint using the MDE.Linux/MDE.Win
 
 > These steps leverage pre-built arm templates to deploy all the Prerequisites and VM Applications
 
+> [!IMPORTANT]
+> VM Applications leverage Storage Account SAS tokens and require public access to the blob containers. If you have policies in place that prevent Storage account key access and Public network access this solution will not work
+
 ## Overview of steps
 You will need to do a few prerequites steps before creating the Azure Compute Gallery
+1. Create an Azure Storage Account to store the VM Application files
+2. Upload the necessary Defender for Endpoint onboarding and installation scripts for Windows and Linux to the storage account
 
 ## Prerequisites
 
@@ -40,9 +45,8 @@ You will need to do a few prerequites steps before creating the Azure Compute Ga
    <img width="951" height="515" alt="image" src="https://github.com/user-attachments/assets/a3dbef11-1d6c-466e-9786-ef728f376a43" />
 
 2. Download the [installer bash script](https://github.com/microsoft/mdatp-xplat/blob/master/linux/installation/mde_installer.sh) provided in our public GitHub repository.
-3. Zip up the mde_installer.sh and MicrosoftDefenderATPOnboardingLinuxServer.py script into a single zip file
-> Name the zip file MicrosoftDefenderATPOnboardingLinuxServer.zip
-4. Upload the zip file to the the **mde-linux** blob container
+3. TAR the mde_installer.sh and MicrosoftDefenderATPOnboardingLinuxServer.py script into a single TAR file called **mde_installer.tar**
+4. Upload the mde_installer.tar file to the the **mde-linux** blob container
 
 ### Step 2 - Deploy the Azure Compute Gallery
 
