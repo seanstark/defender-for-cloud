@@ -6,7 +6,7 @@ Currently the autoprovising of Defender for Endpoint using the MDE.Linux/MDE.Win
 > [!IMPORTANT]
 > VM Applications leverage Storage Account SAS tokens and require storage account public network access. If you have Azure Policies in place that prevent Storage account key access and Public network access this solution will not work.
 >
-> This solutions assumes you have already ensured the prequites are met for Defender for Endpoint:
+> This solutions assumes you have already ensured the prerequisites are met for Defender for Endpoint:
 > - [Minimum requirements for Microsoft Defender for Endpoint](https://learn.microsoft.com/en-us/defender-endpoint/minimum-requirements)
 > - [Prerequisites for Microsoft Defender for Endpoint on Linux](https://learn.microsoft.com/en-us/defender-endpoint/mde-linux-prerequisites)
 
