@@ -13,11 +13,9 @@ You will need to do a few prerequites steps before creating the Azure Compute Ga
 
 ### Step 1 - Deploy the Storage Account
 > [!IMPORTANT]
-> VM Applications leverage SAS tokens and require public access to the blob containers.
+> After you create the storage account ensure you have the **Storage Blob Data Contributor** role assigned
 
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fseanstark%2Fdefender-for-cloud%2Frefs%2Fheads%2Fmain%2Fdefender-for-servers%2Funiform-vmss%2FstorageAccount.json)
-
-> After you create the storage account ensure you have the **Storage Blob Data Contributor** role assigned
 
 ### Step 2 - Download the Defender for Endpoint onboarding and installation scripts
 
