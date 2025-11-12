@@ -3,8 +3,6 @@
 
 Currently the autoprovising of Defender for Endpoint using the MDE.Linux/MDE.Windows extensions with Defender for Servers is not supported on Uniform Virtual Machine Scalesets. This solution leverages [Azure Compute VM Applications](https://learn.microsoft.com/azure/virtual-machines/vm-applications) to deploy the Defender for Endpoint agent on Windows and Linux Uniform Virtual Machine Scalesets. 
 
-> These steps leverage pre-built arm templates to deploy all the Prerequisites and VM Applications
-
 > [!IMPORTANT]
 > VM Applications leverage Storage Account SAS tokens and require public access to the blob containers. If you have policies in place that prevent Storage account key access and Public network access this solution will not work
 
