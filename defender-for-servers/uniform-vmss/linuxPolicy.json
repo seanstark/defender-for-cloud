@@ -1,0 +1,188 @@
+{
+  "mode": "Indexed",
+  "policyRule": {
+    "if": {
+      "allOf": [
+        {
+          "field": "type",
+          "equals": "Microsoft.Compute/virtualMachineScaleSets"
+        },
+        {
+          "field": "[concat('tags[','compute.aks.billing',']')]",
+          "exists": "false"
+        },
+        {
+          "field": "Microsoft.Compute/virtualMachineScaleSets/orchestrationMode",
+          "equals": "Uniform"
+        },
+        {
+          "anyOf": [
+            {
+              "field": "Microsoft.Compute/virtualMachineScaleSets/virtualMachineProfile.storageProfile.osDisk.osType",
+              "equals": "linux"
+            },
+            {
+              "field": "Microsoft.Compute/imageOffer",
+              "contains": "linux"
+            }
+          ]
+        }
+      ]
+    },
+    "then": {
+      "effect": "[parameters('effect')]",
+      "details": {
+        "type": "Microsoft.Compute/virtualMachineScaleSets",
+        "name": "[field('name')]",
+        "existenceCondition": {
+          "allOf": [
+            {
+              "count": {
+                "field": "Microsoft.Compute/virtualMachineScaleSets/virtualMachineProfile.applicationProfile.galleryApplications[*]",
+                "where": {
+                  "anyOf": [
+                    {
+                      "field": "Microsoft.Compute/virtualMachineScaleSets/virtualMachineProfile.applicationProfile.galleryApplications[*].packageReferenceId",
+                      "equals": "[toLower(parameters('galleryApplication'))]"
+                    },
+                    {
+                      "field": "Microsoft.Compute/virtualMachineScaleSets/virtualMachineProfile.applicationProfile.galleryApplications[*].packageReferenceId",
+                      "equals": "[replace(parameters('galleryApplication'), last(split(parameters('galleryApplication'),'/')),'latest')]"
+                    }
+                  ]
+                }
+              },
+              "greaterOrEquals": 1
+            }
+          ]
+        },
+        "roleDefinitionIds": [
+          "/providers/Microsoft.Authorization/roleDefinitions/9980e02c-c2be-4d73-94e8-173b1dc7cf3c",
+          "/providers/Microsoft.Authorization/roleDefinitions/b9331d33-8a36-4f8c-b097-4f54124fdb44"
+        ],
+        "deployment": {
+          "properties": {
+            "mode": "incremental",
+            "template": {
+              "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json",
+              "contentVersion": "1.0.0.0",
+              "parameters": {
+                "vmName": {
+                  "type": "string"
+                },
+                "location": {
+                  "type": "string"
+                },
+                "galleryApplication": {
+                  "type": "string"
+                },
+                "enableAutomaticUpgrade": {
+                  "type": "Bool"
+                },
+                "treatFailureAsDeploymentFailure": {
+                  "type": "Bool"
+                },
+                "configurationReference": {
+                  "type": "string"
+                }
+              },
+              "resources": [
+                {
+                  "type": "Microsoft.Compute/virtualMachineScaleSets",
+                  "apiVersion": "2025-04-01",
+                  "name": "[parameters('vmName')]",
+                  "location": "[parameters('location')]",
+                  "properties": {
+                    "virtualMachineProfile": {
+                      "applicationProfile": {
+                        "galleryApplications": [
+                          {
+                            "packageReferenceId": "[parameters('galleryApplication')]",
+                            "enableAutomaticUpgrade": "[parameters('enableAutomaticUpgrade')]",
+                            "treatFailureAsDeploymentFailure": "[parameters('treatFailureAsDeploymentFailure')]",
+                            "configurationReference": "[parameters('configurationReference')]"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            "parameters": {
+              "vmName": {
+                "value": "[field('name')]"
+              },
+              "location": {
+                "value": "[field('location')]"
+              },
+              "galleryApplication": {
+                "value": "[parameters('galleryApplication')]"
+              },
+              "enableAutomaticUpgrade": {
+                "value": "[parameters('enableAutomaticUpgrade')]"
+              },
+              "treatFailureAsDeploymentFailure": {
+                "value": "[parameters('treatFailureAsDeploymentFailure')]"
+              },
+              "configurationReference": {
+                "value": "[parameters('configurationReference')]"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "parameters": {
+    "effect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect",
+        "description": "Enable or disable the execution of the policy."
+      },
+      "allowedValues": [
+        "DeployIfNotExists",
+        "AuditIfNotExists",
+        "Disabled"
+      ],
+      "defaultValue": "DeployIfNotExists"
+    },
+    "galleryApplication": {
+      "type": "String",
+      "metadata": {
+        "displayName": "VM Application Version",
+        "description": "The package reference id to vm application version to deploy",
+        "strongType": "microsoft.compute/galleries/applications/versions",
+        "portalReview": true
+      }
+    },
+    "enableAutomaticUpgrade": {
+      "type": "Boolean",
+      "metadata": {
+        "displayName": "Enable Automatic Upgrade",
+        "description": "If set to true, when a new Gallery Application version is available it will be automatically updated",
+        "portalReview": true
+      },
+      "defaultValue": false
+    },
+    "treatFailureAsDeploymentFailure": {
+      "type": "Boolean",
+      "metadata": {
+        "displayName": "Treat Failure As Deployment Success",
+        "description": "The VM application extension always returns a success regardless of whether any VM app failed while being installed/updated/removed",
+        "portalReview": true
+      },
+      "defaultValue": false
+    },
+    "configurationReference": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Configuration File Reference",
+        "description": "Optional, Specifies the uri to an azure blob that will replace the default configuration for the package if provided",
+        "portalReview": true
+      },
+      "defaultValue": ""
+    }
+  }
+}
