@@ -238,8 +238,8 @@ $runAdditionalDataCollection = Read-Host "Do you want to run the additional data
 if ($runAdditionalDataCollection -eq "yes") {
 
     # Collect data for Defender for Containers plan - based on allocation metric over time for more accureate estimate
-    foreach ($sub in $subscriptions) {
-        Write-Host "Processing Subscription: $($sub.Name) - $($sub.Id) for containers plan"
+    foreach ($sub in ($allSubscriptionsResults | where {$_.Plan -eq 'containers' -and $_.ResourcesCount -gt 0} )) {
+        Write-Host "Processing Subscription: $($sub.SubscriptionName) - $($sub.SubscriptionID) for containers plan"
 
         # Initialize variables to hold the total VPU cores and the number of clusters for the current subscription
         $totalVPUCoresForSubscription = 0
@@ -247,7 +247,7 @@ if ($runAdditionalDataCollection -eq "yes") {
 
         # Get all AKS clusters in the subscription
         try {
-            $aksClustersUri = "/subscriptions/$($sub.Id)/providers/Microsoft.ContainerService/managedClusters?api-version=2021-03-01"
+            $aksClustersUri = "/subscriptions/$($sub.SubscriptionID)/providers/Microsoft.ContainerService/managedClusters?api-version=2021-03-01"
             $response = Invoke-AzRestMethod -Method GET -Path $aksClustersUri -ErrorAction Stop
             if ($response.StatusCode -eq 200) {
                 $aksClusters = $response.Content | ConvertFrom-Json | Select-Object -ExpandProperty value
@@ -262,7 +262,7 @@ if ($runAdditionalDataCollection -eq "yes") {
             }
             $clustersCount = ($aksClusters | Measure-Object).Count
         } catch {
-            Write-Error "Failed to retrieve AKS clusters in Subscription: $($sub.Name). Error: $_"
+            Write-Error "Failed to retrieve AKS clusters in Subscription: $($sub.SubscriptionName). Error: $_"
             continue # Continue with the next subscription if this fails
         }
 
@@ -291,7 +291,7 @@ if ($runAdditionalDataCollection -eq "yes") {
         Write-Host "Total vCores for the subscription over the past 30 days: $totalVPUCoresForSubscription"
 
         # Update existing Defender for Containers Plan counts
-        IF ($totalVPUCoresForSubscription -gt 0){
+        IF ($totalVPUCoresForSubscription -gt 1){
             ($allSubscriptionsResults | Where-Object { $_.plan -eq "containers" -and $_.SubscriptionID -eq $sub.Id }).BillableUnits
             ($allSubscriptionsResults | Where-Object { $_.plan -eq "containers" -and $_.SubscriptionID -eq $sub.Id }).ResourcesCount
         }
