@@ -164,10 +164,11 @@ foreach ($result in $queryResults) {
     $plan = $result.plan
     $subscriptionId = $result.subscriptionId
     $subscriptionName = ($subscriptions | Where-Object { $_.Id -eq $subscriptionId }).Name
-    $subscriptionState = ($subscriptions | Where-Object { $_.Id -eq $subscriptionId }).State
 
     #Get MDC Plan Status
     $planDetails = (Invoke-AzRestMethod -Path "/subscriptions/$subscriptionId/providers/microsoft.security/pricings/$($plan)?api-version=2024-01-01").Content | ConvertFrom-Json
+
+    If (!($planDetails.properties | get-member -Name SubPlan)) { $planDetails.properties | Add-Member -MemberType NoteProperty -Name SubPlan -Value $null -PassThru | Out-Null }
 
     $legacyPlan = $false
     $newPlan = 'N/A'
@@ -202,7 +203,7 @@ foreach ($result in $queryResults) {
         'VirtualMachines' {'Defender for Servers'}
     }
 
-    Write-Host "Subscription: $subscriptionName, SubscriptionId: $subscriptionId, Plan Name: $plan, ResourceCount: $resourcesCount"
+    #Write-Host "Subscription: $subscriptionName, SubscriptionId: $subscriptionId, Plan Name: $plan, Sub Plan: $($planDetails.properties.subPlan), ResourceCount: $resourcesCount"
 
     # Determine billable units based on the plan name
     $billableUnits = if ($hourBasedPlans -contains $plan.ToLower()) {
@@ -237,7 +238,7 @@ $runAdditionalDataCollection = Read-Host "Do you want to run the additional data
 
 if ($runAdditionalDataCollection -eq "yes") {
 
-    # Collect data for Defender for Containers plan - based on allocation metric over time for more accureate estimate
+    # *** Collect data for Defender for Containers plan - based on allocation metric over time for more accureate estimate *** 
     foreach ($sub in ($allSubscriptionsResults | where {$_.Plan -eq 'containers' -and $_.ResourcesCount -gt 0} )) {
         Write-Host "Processing Subscription: $($sub.SubscriptionName) - $($sub.SubscriptionID) for containers plan"
 
@@ -276,8 +277,9 @@ if ($runAdditionalDataCollection -eq "yes") {
 
             try {
                 $metrics = Get-AzMetric -ResourceId $resourceId -MetricName "kube_node_status_allocatable_cpu_cores" -StartTime $startTime -EndTime $endTime -AggregationType Average -TimeGrain 01:00:00
+                # Exclude metrics that had no data to avoid skewing the average with zeros, as well as metrics that are missing data points for the entire period
                 if ($metrics -ne $null -and $metrics.Data -ne $null) {
-                    $averageVPUCores = ($metrics.Data | Measure-Object Average -Average).Average
+                    $averageVPUCores = [Math]::Round(($metrics.Data | where Average -gt 0 | Measure-Object Average -Average).Average)
                     Write-Host "Average allocated CPU cores for the past 30 days: $averageVPUCores"
                     $totalVPUCoresForSubscription += $averageVPUCores
                 } else {
@@ -292,13 +294,13 @@ if ($runAdditionalDataCollection -eq "yes") {
 
         # Update existing Defender for Containers Plan counts
         IF ($totalVPUCoresForSubscription -gt 1){
-            ($allSubscriptionsResults | Where-Object { $_.plan -eq "containers" -and $_.SubscriptionID -eq $sub.Id }).BillableUnits
-            ($allSubscriptionsResults | Where-Object { $_.plan -eq "containers" -and $_.SubscriptionID -eq $sub.Id }).ResourcesCount
+            $sub.BillableUnits = $totalVPUCoresForSubscription
+            $sub.ResourcesCount = $totalVPUCoresForSubscription
         }
     }
 
     # *** Collect numbers for Defender for APIs ***
-    foreach ($sub in $subscriptions) {
+    foreach ($sub in ($allSubscriptionsResults | where {$_.Plan -eq 'api' -and $_.ResourcesCount -gt 0} )) {
         Write-Host "Processing Subscription: $($sub.Name) - $($sub.Id) for API plan"
 
         # Get all APIM services in the subscription
@@ -334,6 +336,7 @@ if ($runAdditionalDataCollection -eq "yes") {
             Write-Host "Retrieving 'Requests' metric for APIM Service: $($apim.Name)"
             try {
                 $metrics = Get-AzMetric -ResourceId $resourceId -MetricName "Requests" -StartTime $startTime -EndTime $endTime -AggregationType Total
+                # Exclude metrics that had no data to avoid skewing the average with zeros, as well as metrics that are missing data points for the entire period
                 if ($metrics -ne $null -and $metrics.Data -ne $null) {
                     $serviceRequests = ($metrics.Data | Measure-Object Total -Sum).Sum
                     Write-Host "Total 'Requests' for the past 30 days: $serviceRequests"
@@ -392,7 +395,7 @@ if ($runAdditionalDataCollection -eq "yes") {
     }
 
     # *** Collect numbers for Cosmos DB plan ***
-    foreach ($sub in $subscriptions) {
+    foreach ($sub in ($allSubscriptionsResults | where {$_.Plan -eq 'cosmosdbs' -and $_.ResourcesCount -gt 0} )) {
         Write-Host "Processing Subscription: $($sub.Name) - $($sub.Id) for Cosmos DB plan"
 
         # Initialize variables to hold the total RU/s and the number of Cosmos DB accounts for the current subscription
@@ -545,9 +548,9 @@ if ($runAdditionalDataCollection -eq "yes") {
         $allSubscriptionsResults += $subscriptionResult
     }
 
-    # Calculate metrics for Malware Scanning extension for Storage Accounts
+    # *** Calculate metrics for Malware Scanning extension for Storage Accounts ***
 
-    foreach ($sub in $subscriptions) {
+    foreach ($sub in ($allSubscriptionsResults | where {$_.Plan -eq 'storageaccounts' -and $_.ResourcesCount -gt 0} )) {
         Write-Host "Processing Subscription: $($sub.Name) - $($sub.Id) for Malware Scanning"
         $storageAccountsUri = "/subscriptions/$($sub.Id)/providers/Microsoft.Storage/storageAccounts?api-version=2021-04-01"
 
@@ -600,8 +603,8 @@ if ($runAdditionalDataCollection -eq "yes") {
         $allSubscriptionsResults += $subscriptionResult
     }
 
-    # Calculate metrics for Defender for AI
-    foreach ($sub in $subscriptions) {
+    # *** Calculate metrics for Defender for AI ***
+    foreach ($sub in ($allSubscriptionsResults | where {$_.Plan -eq 'ai' -and $_.ResourcesCount -gt 0} )) {
         Write-Host "Processing Subscription: $($sub.Name) - $($sub.Id) for Defender for AI"
         $openAiUri = "/subscriptions/$($sub.Id)/providers/Microsoft.CognitiveServices/accounts?api-version=2023-05-01"
 
