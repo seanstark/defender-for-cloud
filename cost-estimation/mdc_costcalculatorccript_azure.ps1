@@ -166,8 +166,10 @@ foreach ($result in $queryResults) {
     $subscriptionName = ($subscriptions | Where-Object { $_.Id -eq $subscriptionId }).Name
 
     #Get MDC Plan Status
-    $planDetails = (Invoke-AzRestMethod -Path "/subscriptions/$subscriptionId/providers/microsoft.security/pricings/$($plan)?api-version=2024-01-01").Content | ConvertFrom-Json
-
+    $restPlan = $plan
+    If ($plan -eq 'serverless'){$restPlan = 'cloudposture'} # Map serverless to cloud posture for accurate plan details retrieval as they are under the same plan in the API
+    $planDetails = (Invoke-AzRestMethod -Path "/subscriptions/$subscriptionId/providers/microsoft.security/pricings/$($restPlan )?api-version=2024-01-01").Content | ConvertFrom-Json
+    $planDetails | fl
     If (!($planDetails.properties | get-member -Name SubPlan)) { $planDetails.properties | Add-Member -MemberType NoteProperty -Name SubPlan -Value $null -PassThru | Out-Null }
 
     $legacyPlan = $false
@@ -188,6 +190,7 @@ foreach ($result in $queryResults) {
         'AppServices' {'Defender for App Service'}
         'Arm' {'Defender for Resource Manager'}
         'CloudPosture' {'Defender for CSPM'}
+        'serverless' {'Defender for CSPM'}
         'ContainerRegistry' {'Defender for Container Registry'}
         'Containers' {'Defender for Containers'}
         'CosmosDbs' {'Defender for Azure Cosmos DB'}
@@ -248,20 +251,23 @@ if ($runAdditionalDataCollection -eq "yes") {
 
         # Get all AKS clusters in the subscription
         try {
-            $aksClustersUri = "/subscriptions/$($sub.SubscriptionID)/providers/Microsoft.ContainerService/managedClusters?api-version=2021-03-01"
+            $aksClustersUri = "/subscriptions/$($sub.SubscriptionID)/providers/Microsoft.ContainerService/managedClusters?api-version=2026-01-01"
+            $arcClustersUri = "/subscriptions/$($sub.SubscriptionID)/providers/microsoft.kubernetes/connectedClusters?api-version=2024-01-01"
             $response = Invoke-AzRestMethod -Method GET -Path $aksClustersUri -ErrorAction Stop
-            if ($response.StatusCode -eq 200) {
+            $arcResponse = Invoke-AzRestMethod -Method GET -Path $arcClustersUri -ErrorAction Stop
+            if ($response.StatusCode -eq 200 -or $arcResponse.StatusCode -eq 200) {
                 $aksClusters = $response.Content | ConvertFrom-Json | Select-Object -ExpandProperty value
+                $arcClusters = $arcResponse.Content | ConvertFrom-Json | Select-Object -ExpandProperty value
             } else {
                 Write-Error "Failed to retrieve AKS clusters. Status code: $($response.StatusCode)"
                 continue
             }
 
-            if (-not $aksClusters) {
+            if (-not $aksClusters -or -not $arcClusters) {
                 Write-Host "No AKS clusters found in Subscription: $($sub.Name)"
                 continue
             }
-            $clustersCount = ($aksClusters | Measure-Object).Count
+            $clustersCount = ($aksClusters + $arcClusters | Measure-Object).Count
         } catch {
             Write-Error "Failed to retrieve AKS clusters in Subscription: $($sub.SubscriptionName). Error: $_"
             continue # Continue with the next subscription if this fails
@@ -271,12 +277,33 @@ if ($runAdditionalDataCollection -eq "yes") {
         $startTime = (Get-Date).AddDays(-30).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
         $endTime = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
 
+        # AKS Clusters
         foreach ($aks in $aksClusters) {
             $resourceId = $aks.Id
             Write-Host "AKS Cluster: $($resourceId)"
 
             try {
-                $metrics = Get-AzMetric -ResourceId $resourceId -MetricName "kube_node_status_allocatable_cpu_cores" -StartTime $startTime -EndTime $endTime -AggregationType Average -TimeGrain 01:00:00
+                $metrics = Get-AzMetric -ResourceId $resourceId -MetricName "kube_node_status_allocatable_cpu_cores" -StartTime $startTime -EndTime $endTime -AggregationType Average -TimeGrain 01:00:00 -WarningAction SilentlyContinue
+                # Exclude metrics that had no data to avoid skewing the average with zeros, as well as metrics that are missing data points for the entire period
+                if ($metrics -ne $null -and $metrics.Data -ne $null) {
+                    $averageVPUCores = [Math]::Round(($metrics.Data | where Average -gt 0 | Measure-Object Average -Average).Average)
+                    Write-Host "Average allocated CPU cores for the past 30 days: $averageVPUCores"
+                    $totalVPUCoresForSubscription += $averageVPUCores
+                } else {
+                    Write-Host "No data available for allocated CPU cores metric for the past 30 days."
+                }
+            } catch {
+                Write-Host "Error retrieving allocated CPU cores metric: $_"
+            }
+        }
+
+        #Arc Connected Clusters
+        foreach ($arc in $arcClusters) {
+            $resourceId = $arc.Id
+            Write-Host "ARC Cluster: $($resourceId)"
+
+            try {
+                $metrics = Get-AzMetric -ResourceId $resourceId -MetricName "capacity_cpu_cores" -StartTime $startTime -EndTime $endTime -AggregationType Average -TimeGrain 01:00:00 
                 # Exclude metrics that had no data to avoid skewing the average with zeros, as well as metrics that are missing data points for the entire period
                 if ($metrics -ne $null -and $metrics.Data -ne $null) {
                     $averageVPUCores = [Math]::Round(($metrics.Data | where Average -gt 0 | Measure-Object Average -Average).Average)
@@ -301,26 +328,26 @@ if ($runAdditionalDataCollection -eq "yes") {
 
     # *** Collect numbers for Defender for APIs ***
     foreach ($sub in ($allSubscriptionsResults | where {$_.Plan -eq 'api' -and $_.ResourcesCount -gt 0} )) {
-        Write-Host "Processing Subscription: $($sub.Name) - $($sub.Id) for API plan"
+        Write-Host "Processing Subscription: $($sub.SubscriptionName) - $($sub.SubscriptionID) for API plan"
 
         # Get all APIM services in the subscription
         try {
-            $apimServicesUri = "/subscriptions/$($sub.Id)/providers/Microsoft.ApiManagement/service?api-version=2024-05-01"
+            $apimServicesUri = "/subscriptions/$($sub.SubscriptionID)/providers/Microsoft.ApiManagement/service?api-version=2024-05-01"
             $response = Invoke-AzRestMethod -Method GET -Path $apimServicesUri -ErrorAction Stop
             $apimServices = $response.Content | ConvertFrom-Json | Select-Object -ExpandProperty value
 
             if (-not $apimServices) {
-                Write-Host "No APIM services found in Subscription: $($sub.Name)"
+                Write-Host "No APIM services found in Subscription: $($sub.SubscriptionName)"
                 continue
             }
         } catch {
-            Write-Error "Failed to retrieve APIM services in Subscription: $($sub.Name). Error: $_"
+            Write-Error "Failed to retrieve APIM services in Subscription: $($sub.SubscriptionName). Error: $_"
             continue # Continue with the next subscription if this fails
         }
 
         # Track the number of APIM services in the result
         $apimServicesCount = ($apimServices | Measure-Object).Count
-        Write-Host "Number of APIM services in subscription $($sub.Name): $apimServicesCount"
+        Write-Host "Number of APIM services in subscription $($sub.SubscriptionName): $apimServicesCount"
 
         # Define the time range for the last 30 days
         $startTime = (Get-Date).AddDays(-30).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
@@ -338,7 +365,7 @@ if ($runAdditionalDataCollection -eq "yes") {
                 $metrics = Get-AzMetric -ResourceId $resourceId -MetricName "Requests" -StartTime $startTime -EndTime $endTime -AggregationType Total
                 # Exclude metrics that had no data to avoid skewing the average with zeros, as well as metrics that are missing data points for the entire period
                 if ($metrics -ne $null -and $metrics.Data -ne $null) {
-                    $serviceRequests = ($metrics.Data | Measure-Object Total -Sum).Sum
+                    $serviceRequests = ($metrics.Data | where Total -gt 0 | Measure-Object Total -Sum).Sum
                     Write-Host "Total 'Requests' for the past 30 days: $serviceRequests"
                     $totalRequestsForSubscription += $serviceRequests
                 } else {
@@ -376,27 +403,14 @@ if ($runAdditionalDataCollection -eq "yes") {
         # Find the plan with the lowest cost
         $recommendedPlan = $results | Sort-Object TotalCost | Select-Object -First 1
         
-        # Remove existing items for "api" before appending
-        $allSubscriptionsResults = $allSubscriptionsResults | Where-Object { $_.plan -ne "api" -or $_.SubscriptionID -ne $sub.Id }
-
-        # Compile the subscription results
-        $subscriptionResult = [PSCustomObject]@{
-            SubscriptionID = $sub.Id
-            SubscriptionName = $sub.Name
-            ResourcesCount = $apimServicesCount
-            BillableUnits = $totalRequestsForSubscription
-            plan = "api"
-            EnvironmentType = $environmentType
-            RecommendedSubPlan = $recommendedPlan.Plan
-        }
-
-        # Add this subscription's results to the list
-        $allSubscriptionsResults += $subscriptionResult
+        $sub.BillableUnits = $totalRequestsForSubscription
+        $sub.ResourcesCount = $totalRequestsForSubscription
+        $sub.RecommendedSubPlan = $recommendedPlan.Plan
     }
 
     # *** Collect numbers for Cosmos DB plan ***
     foreach ($sub in ($allSubscriptionsResults | where {$_.Plan -eq 'cosmosdbs' -and $_.ResourcesCount -gt 0} )) {
-        Write-Host "Processing Subscription: $($sub.Name) - $($sub.Id) for Cosmos DB plan"
+         Write-Host "Processing Subscription: $($sub.SubscriptionName) - $($sub.SubscriptionID) for CosmosDB plan"
 
         # Initialize variables to hold the total RU/s and the number of Cosmos DB accounts for the current subscription
         $totalRUsForSubscription = 0
@@ -404,17 +418,17 @@ if ($runAdditionalDataCollection -eq "yes") {
 
         # Get all Cosmos DB accounts in the subscription
         try {
-            $cosmosDBAccountsUri = "/subscriptions/$($sub.Id)/providers/Microsoft.DocumentDB/databaseAccounts?api-version=2021-04-15"
+            $cosmosDBAccountsUri = "/subscriptions/$($sub.SubscriptionID)/providers/Microsoft.DocumentDB/databaseAccounts?api-version=2021-04-15"
             $response = Invoke-AzRestMethod -Method GET -Path $cosmosDBAccountsUri -ErrorAction Stop
             $cosmosDBAccounts = $response.Content | ConvertFrom-Json | Select-Object -ExpandProperty value
 
             if (-not $cosmosDBAccounts) {
-                Write-Host "No Cosmos DB accounts found in Subscription: $($sub.Name)"
+                Write-Host "No Cosmos DB accounts found in Subscription: $($sub.SubscriptionName)"
                 continue
             }
             $cosmosDBAccountsCount = ($cosmosDBAccounts | Measure-Object).Count
         } catch {
-            Write-Error "Failed to retrieve Cosmos DB accounts in Subscription: $($sub.Name). Error: $_"
+            Write-Error "Failed to retrieve Cosmos DB accounts in Subscription: $($sub.SubscriptionName). Error: $_"
             continue # Continue with the next subscription if this fails
         }
 
@@ -531,73 +545,65 @@ if ($runAdditionalDataCollection -eq "yes") {
         $averageRUsPerHour = [math]::Round($totalRUsForSubscription / 730)
         Write-Host "Average consumption for subscription (RUs/hour): $averageRUsPerHour"
 
-        # Remove existing items for "cosmosdbs" before appending
-        $allSubscriptionsResults = $allSubscriptionsResults | Where-Object { $_.plan -ne "cosmosdbs" -or $_.SubscriptionID -ne $sub.Id }
-
-        # Compile the subscription results
-        $subscriptionResult = [PSCustomObject]@{
-            SubscriptionID = $sub.Id
-            SubscriptionName = $sub.Name
-            ResourcesCount = $cosmosDBAccountsCount
-            BillableUnits = $averageRUsPerHour
-            plan = "cosmosdbs"
-            EnvironmentType = $environmentType
-        }
-
-        # Add this subscription's results to the list
-        $allSubscriptionsResults += $subscriptionResult
+        $sub.BillableUnits = $averageRUsPerHour
+        $sub.ResourcesCount = $averageRUsPerHour
     }
 
     # *** Calculate metrics for Malware Scanning extension for Storage Accounts ***
-
     foreach ($sub in ($allSubscriptionsResults | where {$_.Plan -eq 'storageaccounts' -and $_.ResourcesCount -gt 0} )) {
-        Write-Host "Processing Subscription: $($sub.Name) - $($sub.Id) for Malware Scanning"
-        $storageAccountsUri = "/subscriptions/$($sub.Id)/providers/Microsoft.Storage/storageAccounts?api-version=2021-04-01"
+        Write-Host "Processing Subscription: $($sub.SubscriptionName) - $($sub.SubscriptionID) for Malware Scanning"
 
+        $storageAccountsUri = "/subscriptions/$($sub.SubscriptionID)/providers/Microsoft.Storage/storageAccounts?api-version=2025-08-01"
         $response = Invoke-AzRestMethod -Method GET -Path $storageAccountsUri -ErrorAction Stop
-
         $StorageAccounts = $response.Content | ConvertFrom-Json | Select-Object -ExpandProperty value
 
         if (-not $StorageAccounts) {
-            Write-Host "No Storage Accounts found in Subscription: $($sub.Name)"
+            Write-Host "No Storage Accounts found in Subscription: $($sub.SubscriptionName)"
             continue
         }
-     
-        $threadSafeDict = [System.Collections.Concurrent.ConcurrentDictionary[string, [Int64]]]::New()
 
         $storageAccountsCount = ($StorageAccounts | Measure-Object).Count
-        Write-Host "Estimating Ingress metric for Malware scanning extension for $($storageAccountsCount) accounts in $($sub.Name)"
+        Write-Host "Estimating Ingress metric for Malware scanning extension for $($storageAccountsCount) accounts in $($sub.SubscriptionName)"
 
-        $now = Get-Date
-        $lastMonth = $now.AddMonths(-1)
+        # Define the time range for the last 30 days
+        $startTime = (Get-Date).AddDays(-30).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+        $endTime = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")    
 
+        # Blob Specific metrics to determine accurate put operations of content
+        $blobMetricFilter = (New-AzMetricFilter -Dimension 'ApiName' -Operator eq -Value 'PutBlob','CopyBlob','PutBlock','PutBlockFromURL','AppendFile','FlushFile','CreatePathFile'  -WarningAction SilentlyContinue)
+
+        $threadSafeDictSum = [System.Collections.Concurrent.ConcurrentDictionary[string, [Int64]]]::New()
         $StorageAccounts | ForEach-Object -ThrottleLimit 15 -Parallel {
             Write-Host "Processing Storage Account: $($_.id)"
-            $totalIngressPerSA = 0
-            $now = $USING:now
-            $lastMonth = $USING:lastMonth
-            $dict = $USING:threadSafeDict
-            $body = "{
-                'requests':[{
-                    'httpMethod':'GET',
-                    'relativeUrl': '$($_.id)/blobServices/default/providers/microsoft.Insights/metrics?timespan=$($lastMonth.ToString('u'))/$($now.ToString('u'))&interval=FULL&metricnames=Ingress&aggregation=total&metricNamespace=microsoft.storage%2Fstorageaccounts%2Fblobservices&validatedimensions=false&api-version=2019-07-01'
-                }]
-            }"
-            $resp = Invoke-AzRestMethod -Method POST -Path '/batch?api-version=2015-11-01' -Payload $body
-            $totalIngressPerSA += (($resp.Content | ConvertFrom-Json).responses.content.value.timeseries.data | Measure-Object -Property 'total' -Sum).Sum
-            $null = $dict.TryAdd($_.Id, $totalIngressPerSA)
+            $blobIngress = 0
+            $totalBlobIngress = 0
+            $metricFilter = $USING:blobMetricFilter
+            $startTime = $USING:startTime
+            $endTime = $USING:endTime
+            $dict = $USING:threadSafeDictSum
+            $blobIngress = Get-AzMetric -ResourceId $($_.id + "/blobservices/default") -MetricName Ingress -MetricFilter $metricFilter -AggregationType Total -StartTime $startTime -EndTime $endTime -WarningAction SilentlyContinue
+            $blobIngress.Data.Total | % {$totalBlobIngress += $_}
+            $null = $dict.TryAdd($_.Id, $totalBlobIngress)
         }
 
-        $totalIngressPerSA = $threadSafeDict.Values | Measure-Object -Sum | Select-Object -ExpandProperty Sum
-        $totalIngressPerSA_GB = $totalIngressPerSA / 1GB
-
+        $totalIngressPerSA = $threadSafeDictSum.Values | Measure-Object -Sum | Select-Object -ExpandProperty Sum
+        $totalIngressPerSA_GB = [decimal]$($totalIngressPerSA / 1GB)
+     
+        # Compile the subscription results
         $subscriptionResult = [PSCustomObject]@{
-            SubscriptionID = $sub.Id
-            SubscriptionName = $sub.Name
-            ResourcesCount = $storageAccountsCount
+            SubscriptionID = $sub.SubscriptionID
+            SubscriptionName = $sub.SubscriptionName
+            ResourcesCount = $sub.ResourcesCount
             BillableUnits = $totalIngressPerSA_GB
-            plan = "onuploadmalwarescanning"
+            Plan = $sub.Plan
+            PlanName = $sub.PlanName
+            SubPlan = "Malware Scanning"
+            PlanEnabled = $sub.PlanEnabled
+            LegacyPlan = $legacyPlan
+            newPlan = $newPlan
             EnvironmentType = $environmentType
+            RecommendedSubPlan = $null
+            ExcludableResources = $null
         }
 
         $allSubscriptionsResults += $subscriptionResult
