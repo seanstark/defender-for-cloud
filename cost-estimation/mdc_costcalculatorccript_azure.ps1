@@ -219,7 +219,7 @@ foreach ($result in $queryResults) {
     $subscriptionResult = [PSCustomObject]@{
         SubscriptionID = $subscriptionId
         SubscriptionName = $subscriptionName
-        ResourcesCount = $resourcesCount
+        ResourcesCount = If($plan -eq 'serverless') {$resourcesCount * 8} else {$resourcesCount} # Map serverless resources back to actual count for accurate reporting
         BillableUnits = $billableUnits
         Plan = $plan
         PlanName = $planName
@@ -322,7 +322,7 @@ if ($runAdditionalDataCollection -eq "yes") {
         # Update existing Defender for Containers Plan counts
         IF ($totalVPUCoresForSubscription -gt 1){
             $sub.BillableUnits = $totalVPUCoresForSubscription
-            $sub.ResourcesCount = $totalVPUCoresForSubscription
+            $sub.ResourcesCount = $clustersCount
         }
     }
 
@@ -404,7 +404,7 @@ if ($runAdditionalDataCollection -eq "yes") {
         $recommendedPlan = $results | Sort-Object TotalCost | Select-Object -First 1
         
         $sub.BillableUnits = $totalRequestsForSubscription
-        $sub.ResourcesCount = $totalRequestsForSubscription
+        $sub.ResourcesCount = $apimServicesCount
         $sub.RecommendedSubPlan = $recommendedPlan.Plan
     }
 
@@ -546,7 +546,7 @@ if ($runAdditionalDataCollection -eq "yes") {
         Write-Host "Average consumption for subscription (RUs/hour): $averageRUsPerHour"
 
         $sub.BillableUnits = $averageRUsPerHour
-        $sub.ResourcesCount = $averageRUsPerHour
+        $sub.ResourcesCount = $cosmosDBAccountsCount
     }
 
     # *** Calculate metrics for Malware Scanning extension for Storage Accounts ***
@@ -593,7 +593,7 @@ if ($runAdditionalDataCollection -eq "yes") {
         $subscriptionResult = [PSCustomObject]@{
             SubscriptionID = $sub.SubscriptionID
             SubscriptionName = $sub.SubscriptionName
-            ResourcesCount = $sub.ResourcesCount
+            ResourcesCount = $storageAccountsCount
             BillableUnits = $totalIngressPerSA_GB
             Plan = $sub.Plan
             PlanName = $sub.PlanName
@@ -611,28 +611,25 @@ if ($runAdditionalDataCollection -eq "yes") {
 
     # *** Calculate metrics for Defender for AI ***
     foreach ($sub in ($allSubscriptionsResults | where {$_.Plan -eq 'ai' -and $_.ResourcesCount -gt 0} )) {
-        Write-Host "Processing Subscription: $($sub.Name) - $($sub.Id) for Defender for AI"
-        $openAiUri = "/subscriptions/$($sub.Id)/providers/Microsoft.CognitiveServices/accounts?api-version=2023-05-01"
+        Write-Host "Processing Subscription: $($sub.SubscriptionName) - $($sub.SubscriptionID) for Defender for AI"
 
+        $openAiUri = "/subscriptions/$($sub.SubscriptionID)/providers/Microsoft.CognitiveServices/accounts?api-version=2023-05-01"
         $response = Invoke-AzRestMethod -Method GET -Path $openAiUri -ErrorAction Stop
-
         $openAiResources = ($response.Content | ConvertFrom-Json).value | Where-Object {
             $_.kind -in @("OpenAI", "AIServices")
         }
 
         if (-not $openAiResources) {
-            Write-Host "No Azure OpenAI resources found in Subscription: $($sub.Name)"
+            Write-Host "No Azure OpenAI resources found in Subscription: $($sub.SubscriptionName)"
             continue
         }
 
-        $threadSafeDict = [System.Collections.Concurrent.ConcurrentDictionary[string, [Int64]]]::New()
-
         $openAiResourcesCount = ($openAiResources | Measure-Object).Count
-        Write-Host "Estimating token usage for $($openAiResourcesCount) Azure OpenAI resources in $($sub.Name)"
+        Write-Host "Estimating token usage for $($openAiResourcesCount) Azure OpenAI resources in $($sub.SubscriptionName)"
 
         $now = Get-Date
         $lastMonth = $now.AddMonths(-1)
-
+        $threadSafeDict = [System.Collections.Concurrent.ConcurrentDictionary[string, [Int64]]]::New()
         $openAiResources | ForEach-Object -ThrottleLimit 15 -Parallel {
             Write-Host "Processing OpenAI Resource: $($_.id)"
             $totalTokens = 0
@@ -652,21 +649,8 @@ if ($runAdditionalDataCollection -eq "yes") {
 
         $tokens = $threadSafeDict.Values | Measure-Object -Sum | Select-Object -ExpandProperty Sum
 
-        # Remove existing items for "ai" before appending
-        $allSubscriptionsResults = $allSubscriptionsResults | Where-Object { $_.plan -ne "ai" -or $_.SubscriptionID -ne $sub.Id }
-
-        # Compile the subscription results
-        $subscriptionResult = [PSCustomObject]@{
-            SubscriptionID = $sub.Id
-            SubscriptionName = $sub.Name
-            ResourcesCount = $openAiResourcesCount
-            BillableUnits = $tokens
-            plan = "ai"
-            EnvironmentType = $environmentType
-        }
-
-        # Add this subscription's results to the list
-        $allSubscriptionsResults += $subscriptionResult
+        $sub.BillableUnits = $tokens
+        $sub.ResourcesCount = $openAiResourcesCount
     }
 }
 
