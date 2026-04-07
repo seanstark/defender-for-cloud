@@ -246,7 +246,7 @@ if ($runAdditionalDataCollection -eq "yes") {
         Write-Host "Processing Subscription: $($sub.SubscriptionName) - $($sub.SubscriptionID) for containers plan"
 
         # Initialize variables to hold the total VPU cores and the number of clusters for the current subscription
-        $totalVPUCoresForSubscription = 0
+        $totalvCoresForSubscription = 0
         $clustersCount = 0
 
         # Get all AKS clusters in the subscription
@@ -278,50 +278,59 @@ if ($runAdditionalDataCollection -eq "yes") {
         $endTime = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
 
         # AKS Clusters
-        foreach ($aks in $aksClusters) {
-            $resourceId = $aks.Id
-            Write-Host "AKS Cluster: $($resourceId)"
-
+        $threadSafeDictSum = [System.Collections.Concurrent.ConcurrentDictionary[string, [Int64]]]::New()
+        $aksClusters | ForEach-Object -ThrottleLimit 15 -Parallel {
+            Write-Host "Retrieving average vCores Arc Connected Cluster: $($_.id)"
+            $averageVPUCores = 0
+            $startTime = $USING:startTime
+            $endTime = $USING:endTime
+            $dict = $USING:threadSafeDictSum
             try {
-                $metrics = Get-AzMetric -ResourceId $resourceId -MetricName "kube_node_status_allocatable_cpu_cores" -StartTime $startTime -EndTime $endTime -AggregationType Average -TimeGrain 01:00:00 -WarningAction SilentlyContinue
+                $metrics = Get-AzMetric -ResourceId $_.id -MetricName "kube_node_status_allocatable_cpu_cores" -StartTime $startTime -EndTime $endTime -AggregationType Average -TimeGrain 01:00:00 -WarningAction SilentlyContinue
                 # Exclude metrics that had no data to avoid skewing the average with zeros, as well as metrics that are missing data points for the entire period
                 if ($metrics -ne $null -and $metrics.Data -ne $null) {
                     $averageVPUCores = [Math]::Round(($metrics.Data | where Average -gt 0 | Measure-Object Average -Average).Average)
                     Write-Host "Average allocated CPU cores for the past 30 days: $averageVPUCores"
-                    $totalVPUCoresForSubscription += $averageVPUCores
+                    $null = $dict.TryAdd($_.Id, $averageVPUCores)
                 } else {
                     Write-Host "No data available for allocated CPU cores metric for the past 30 days."
                 }
             } catch {
-                Write-Host "Error retrieving allocated CPU cores metric: $_"
+                Write-Host "Error retrieving 'Requests' metric: $_"
             }
         }
 
-        # Arc Connected Clusters
-        foreach ($arc in $arcClusters) {
-            $resourceId = $arc.Id
-            Write-Host "ARC Cluster: $($resourceId)"
+        $totalvCoresForSubscription += $threadSafeDictSum.Values | Measure-Object -Sum | Select-Object -ExpandProperty Sum
 
+        $threadSafeDictSum = [System.Collections.Concurrent.ConcurrentDictionary[string, [Int64]]]::New()
+        $arcClusters | ForEach-Object -ThrottleLimit 15 -Parallel {
+            Write-Host "Retrieving average vCores Arc Connected Cluster: $($_.id)"
+            $averageVPUCores = 0
+            $startTime = $USING:startTime
+            $endTime = $USING:endTime
+            $dict = $USING:threadSafeDictSum
             try {
-                $metrics = Get-AzMetric -ResourceId $resourceId -MetricName "capacity_cpu_cores" -StartTime $startTime -EndTime $endTime -AggregationType Average -TimeGrain 01:00:00 
+                $metrics = Get-AzMetric -ResourceId $_.id -MetricName "capacity_cpu_cores" -StartTime $startTime -EndTime $endTime -AggregationType Average -TimeGrain 01:00:00 
                 # Exclude metrics that had no data to avoid skewing the average with zeros, as well as metrics that are missing data points for the entire period
                 if ($metrics -ne $null -and $metrics.Data -ne $null) {
                     $averageVPUCores = [Math]::Round(($metrics.Data | where Average -gt 0 | Measure-Object Average -Average).Average)
                     Write-Host "Average allocated CPU cores for the past 30 days: $averageVPUCores"
-                    $totalVPUCoresForSubscription += $averageVPUCores
+                    $null = $dict.TryAdd($_.Id, $averageVPUCores)
                 } else {
                     Write-Host "No data available for allocated CPU cores metric for the past 30 days."
                 }
             } catch {
-                Write-Host "Error retrieving allocated CPU cores metric: $_"
+                Write-Host "Error retrieving 'Requests' metric: $_"
             }
         }
 
-        Write-Host "Total vCores for the subscription over the past 30 days: $totalVPUCoresForSubscription"
+        $totalvCoresForSubscription += $threadSafeDictSum.Values | Measure-Object -Sum | Select-Object -ExpandProperty Sum
+
+        Write-Host "Total vCores for the subscription over the past 30 days: $totalvCoresForSubscription"
 
         # Update existing Defender for Containers Plan counts
-        IF ($totalVPUCoresForSubscription -gt 1){
-            $sub.BillableUnits = $totalVPUCoresForSubscription
+        IF ($totalvCoresForSubscription -gt 1){
+            $sub.BillableUnits = $totalvCoresForSubscription
             $sub.ResourcesCount = $clustersCount
         }
     }
@@ -356,18 +365,20 @@ if ($runAdditionalDataCollection -eq "yes") {
         # Initialize a variable to hold the total requests for the current subscription
         $totalRequestsForSubscription = 0
 
-        foreach ($apim in $apimServices) {
-            $resourceId = $apim.Id
-            Write-Host "APIM Service: $($resourceId)"
-            
-            Write-Host "Retrieving 'Requests' metric for APIM Service: $($apim.Name)"
+        $threadSafeDictSum = [System.Collections.Concurrent.ConcurrentDictionary[string, [Int64]]]::New()
+        $apimServices | ForEach-Object -ThrottleLimit 15 -Parallel {
+            Write-Host "Retrieving 'Requests' metric for APIM Service: $($_.id)"
+            $serviceRequests = 0
+            $startTime = $USING:startTime
+            $endTime = $USING:endTime
+            $dict = $USING:threadSafeDictSum
             try {
-                $metrics = Get-AzMetric -ResourceId $resourceId -MetricName "Requests" -StartTime $startTime -EndTime $endTime -AggregationType Total
+                $metrics = Get-AzMetric -ResourceId $_.id -MetricName "Requests" -StartTime $startTime -EndTime $endTime -AggregationType Total
                 # Exclude metrics that had no data to avoid skewing the average with zeros, as well as metrics that are missing data points for the entire period
                 if ($metrics -ne $null -and $metrics.Data -ne $null) {
                     $serviceRequests = ($metrics.Data | where Total -gt 0 | Measure-Object Total -Sum).Sum
                     Write-Host "Total 'Requests' for the past 30 days: $serviceRequests"
-                    $totalRequestsForSubscription += $serviceRequests
+                    $null = $dict.TryAdd($_.Id, $serviceRequests)
                 } else {
                     Write-Host "No data available for 'Requests' metric for the past 30 days."
                 }
@@ -376,6 +387,7 @@ if ($runAdditionalDataCollection -eq "yes") {
             }
         }
 
+        $totalRequestsForSubscription = $threadSafeDictSum.Values | Measure-Object -Sum | Select-Object -ExpandProperty Sum
         Write-Host "Total 'Requests' for the subscription over the past 30 days: $totalRequestsForSubscription"
 
         # Calculate costs for each plan taking the limit into consideration
