@@ -159,10 +159,14 @@ try {
 $hourBasedPlans = @("cloudposture", "serverless", "virtualmachines", "appservices", "sqlservers", "sqlservervirtualmachines", "opensourcerelationaldatabases", "storageaccounts", "keyvaults", "arm")
 
 # Process the query results
-foreach ($result in $queryResults) {
-    $resourcesCount = $result.resourceCount
-    $plan = $result.plan
-    $subscriptionId = $result.subscriptionId
+$threadSafeDictSum = [System.Collections.Concurrent.ConcurrentDictionary[string, PSObject]]::New()
+$queryResults | ForEach-Object -ThrottleLimit 15 -Parallel {
+    $dict = $USING:threadSafeDictSum
+    $resourcesCount = $_.resourceCount
+    $plan = $_.plan
+    $subscriptionId = $_.subscriptionId
+    $key = $subscriptionId + $plan
+    $subscriptions = $USING:subscriptions
     $subscriptionName = ($subscriptions | Where-Object { $_.Id -eq $subscriptionId }).Name
 
     #Get MDC Plan Status
@@ -231,10 +235,12 @@ foreach ($result in $queryResults) {
         RecommendedSubPlan = $null
         ExcludableResources = $null
     }
-
-    # Add this subscription's results to the list
-    $allSubscriptionsResults += $subscriptionResult
+    $subscriptionResult
+    $null = $dict.TryAdd($key, $subscriptionResult)
 }
+
+# Add this subscription's results to the list
+$allSubscriptionsResults += $threadSafeDictSum.Values
 
 # Prompt the user to confirm if they want to run the additional data collection
 $runAdditionalDataCollection = Read-Host "Do you want to run the additional data collection for API, Cosmos DB, and Malware Scanning (storage) plans? Collection of this data can take longer dpending on the size of your environment. (yes/no)"
@@ -310,7 +316,7 @@ if ($runAdditionalDataCollection -eq "yes") {
             $endTime = $USING:endTime
             $dict = $USING:threadSafeDictSum
             try {
-                $metrics = Get-AzMetric -ResourceId $_.id -MetricName "capacity_cpu_cores" -StartTime $startTime -EndTime $endTime -AggregationType Average -TimeGrain 01:00:00 
+                $metrics = Get-AzMetric -ResourceId $_.id -MetricName "capacity_cpu_cores" -StartTime $startTime -EndTime $endTime -AggregationType Average -TimeGrain 01:00:00 -WarningAction SilentlyContinue
                 # Exclude metrics that had no data to avoid skewing the average with zeros, as well as metrics that are missing data points for the entire period
                 if ($metrics -ne $null -and $metrics.Data -ne $null) {
                     $averageVPUCores = [Math]::Round(($metrics.Data | where Average -gt 0 | Measure-Object Average -Average).Average)
@@ -373,7 +379,7 @@ if ($runAdditionalDataCollection -eq "yes") {
             $endTime = $USING:endTime
             $dict = $USING:threadSafeDictSum
             try {
-                $metrics = Get-AzMetric -ResourceId $_.id -MetricName "Requests" -StartTime $startTime -EndTime $endTime -AggregationType Total
+                $metrics = Get-AzMetric -ResourceId $_.id -MetricName "Requests" -StartTime $startTime -EndTime $endTime -AggregationType Total -WarningAction SilentlyContinue
                 # Exclude metrics that had no data to avoid skewing the average with zeros, as well as metrics that are missing data points for the entire period
                 if ($metrics -ne $null -and $metrics.Data -ne $null) {
                     $serviceRequests = ($metrics.Data | where Total -gt 0 | Measure-Object Total -Sum).Sum
@@ -457,7 +463,7 @@ if ($runAdditionalDataCollection -eq "yes") {
 
                 if ($isServerless -eq $true) {
                     # Serverless mode
-                    $metrics = Get-AzMetric -ResourceId $resourceId -MetricName "TotalRequestUnits" -StartTime $startTime -EndTime $endTime -AggregationType Total
+                    $metrics = Get-AzMetric -ResourceId $resourceId -MetricName "TotalRequestUnits" -StartTime $startTime -EndTime $endTime -AggregationType Total -WarningAction SilentlyContinue
                     if ($metrics -ne $null -and $metrics.Data -ne $null) {
                         $accountRUs = ($metrics.Data | Measure-Object Total -Sum).Sum
                         Write-Host "Total RUs for the past 30 days (Serverless): $accountRUs"
@@ -487,7 +493,7 @@ if ($runAdditionalDataCollection -eq "yes") {
                                 if ($throughputSettings.properties.resource -ne $null -and $throughputSettings.properties.resource.PSObject.Properties.Match("autoscaleSettings").Count -gt 0) {
                                     # Calculate RU consumption using TotalRequestUnits metric for the database
                                     $dimFilter = "$(New-AzMetricFilter -Dimension DatabaseName -Operator eq -Value $database.name)"
-                                    $metrics = Get-AzMetric -ResourceId $resourceId -MetricName "TotalRequestUnits" -StartTime $startTime -EndTime $endTime -AggregationType Maximum -MetricFilter $dimFilter -TimeGrain 01:00:00
+                                    $metrics = Get-AzMetric -ResourceId $resourceId -MetricName "TotalRequestUnits" -StartTime $startTime -EndTime $endTime -AggregationType Maximum -MetricFilter $dimFilter -TimeGrain 01:00:00 -WarningAction SilentlyContinue
                                     if ($metrics -ne $null -and $metrics.Data -ne $null) {
                                         $accountRUs = ($metrics.Data | Measure-Object Maximum -Sum).Sum
                                         Write-Host "RUs for the past 30 days (Database): $accountRUs"
@@ -522,7 +528,7 @@ if ($runAdditionalDataCollection -eq "yes") {
                                         if ($null -ne $result.properties.resource -and $result.properties.resource.PSObject.Properties.Match("autoscaleSettings").Count -gt 0) {
                                             # Calculate RU consumption using TotalRequestUnits metric
                                             $dimFilter = "$(New-AzMetricFilter -Dimension DatabaseName -Operator eq -Value $database.name) and $(New-AzMetricFilter -Dimension CollectionName -Operator eq -Value $container.name)"
-                                            $metrics = Get-AzMetric -ResourceId $resourceId -MetricName "TotalRequestUnits" -StartTime $startTime -EndTime $endTime -AggregationType Maximum -MetricFilter $dimFilter -TimeGrain 01:00:00
+                                            $metrics = Get-AzMetric -ResourceId $resourceId -MetricName "TotalRequestUnits" -StartTime $startTime -EndTime $endTime -AggregationType Maximum -MetricFilter $dimFilter -TimeGrain 01:00:00 -WarningAction SilentlyContinue
                                             if ($metrics -ne $null -and $metrics.Data -ne $null) {
                                                 $accountRUs = ($metrics.Data | Measure-Object Maximum -Sum).Sum
                                                 Write-Host "RUs for the past 30 days (Container): $accountRUs"
