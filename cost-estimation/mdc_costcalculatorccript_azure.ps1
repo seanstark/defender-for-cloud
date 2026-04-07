@@ -169,7 +169,7 @@ foreach ($result in $queryResults) {
     $restPlan = $plan
     If ($plan -eq 'serverless'){$restPlan = 'cloudposture'} # Map serverless to cloud posture for accurate plan details retrieval as they are under the same plan in the API
     $planDetails = (Invoke-AzRestMethod -Path "/subscriptions/$subscriptionId/providers/microsoft.security/pricings/$($restPlan )?api-version=2024-01-01").Content | ConvertFrom-Json
-    $planDetails | fl
+    
     If (!($planDetails.properties | get-member -Name SubPlan)) { $planDetails.properties | Add-Member -MemberType NoteProperty -Name SubPlan -Value $null -PassThru | Out-Null }
 
     $legacyPlan = $false
@@ -219,11 +219,11 @@ foreach ($result in $queryResults) {
     $subscriptionResult = [PSCustomObject]@{
         SubscriptionID = $subscriptionId
         SubscriptionName = $subscriptionName
-        ResourcesCount = If($plan -eq 'serverless') {$resourcesCount * 8} else {$resourcesCount} # Map serverless resources back to actual count for accurate reporting
-        BillableUnits = $billableUnits
         Plan = $plan
         PlanName = $planName
         SubPlan = $planDetails.properties.subPlan
+        ResourcesCount = If($plan -eq 'serverless') {$resourcesCount * 8} else {$resourcesCount} # Map serverless resources back to actual count for accurate reporting
+        BillableUnits = $billableUnits
         PlanEnabled = If($planDetails.properties.pricingTier -eq "Standard") { $true } else { $false }
         LegacyPlan = $legacyPlan
         newPlan = $newPlan
@@ -297,7 +297,7 @@ if ($runAdditionalDataCollection -eq "yes") {
             }
         }
 
-        #Arc Connected Clusters
+        # Arc Connected Clusters
         foreach ($arc in $arcClusters) {
             $resourceId = $arc.Id
             Write-Host "ARC Cluster: $($resourceId)"
@@ -551,7 +551,7 @@ if ($runAdditionalDataCollection -eq "yes") {
 
     # *** Calculate metrics for Malware Scanning extension for Storage Accounts ***
     foreach ($sub in ($allSubscriptionsResults | where {$_.Plan -eq 'storageaccounts' -and $_.ResourcesCount -gt 0} )) {
-        Write-Host "Processing Subscription: $($sub.SubscriptionName) - $($sub.SubscriptionID) for Malware Scanning"
+        Write-Host "Processing Subscription: $($sub.SubscriptionName) - $($sub.SubscriptionID) for Defender for Storage Malware Scanning"
 
         $storageAccountsUri = "/subscriptions/$($sub.SubscriptionID)/providers/Microsoft.Storage/storageAccounts?api-version=2025-08-01"
         $response = Invoke-AzRestMethod -Method GET -Path $storageAccountsUri -ErrorAction Stop
@@ -587,17 +587,17 @@ if ($runAdditionalDataCollection -eq "yes") {
         }
 
         $totalIngressPerSA = $threadSafeDictSum.Values | Measure-Object -Sum | Select-Object -ExpandProperty Sum
-        $totalIngressPerSA_GB = [decimal]$($totalIngressPerSA / 1GB)
+        $totalIngressPerSA_GB = [math]::round([decimal]($totalIngressPerSA / 1GB),6)
      
         # Compile the subscription results
         $subscriptionResult = [PSCustomObject]@{
             SubscriptionID = $sub.SubscriptionID
             SubscriptionName = $sub.SubscriptionName
-            ResourcesCount = $storageAccountsCount
-            BillableUnits = $totalIngressPerSA_GB
             Plan = $sub.Plan
             PlanName = $sub.PlanName
             SubPlan = "Malware Scanning"
+            ResourcesCount = $storageAccountsCount
+            BillableUnits = $totalIngressPerSA_GB
             PlanEnabled = $sub.PlanEnabled
             LegacyPlan = $legacyPlan
             newPlan = $newPlan
@@ -627,23 +627,19 @@ if ($runAdditionalDataCollection -eq "yes") {
         $openAiResourcesCount = ($openAiResources | Measure-Object).Count
         Write-Host "Estimating token usage for $($openAiResourcesCount) Azure OpenAI resources in $($sub.SubscriptionName)"
 
-        $now = Get-Date
-        $lastMonth = $now.AddMonths(-1)
+        # Define the time range for the last 30 days
+        $startTime = (Get-Date).AddDays(-30).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+        $endTime = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+
         $threadSafeDict = [System.Collections.Concurrent.ConcurrentDictionary[string, [Int64]]]::New()
         $openAiResources | ForEach-Object -ThrottleLimit 15 -Parallel {
             Write-Host "Processing OpenAI Resource: $($_.id)"
             $totalTokens = 0
-            $now = $USING:now
-            $lastMonth = $USING:lastMonth
+            $startTime = $USING:startTime
+            $endTime = $USING:endTime
             $dict = $USING:threadSafeDict
-            $body = "{
-                'requests':[{
-                    'httpMethod':'GET',
-                    'relativeUrl': '$($_.id)/providers/microsoft.Insights/metrics?timespan=$($lastMonth.ToString('u'))/$($now.ToString('u'))&interval=FULL&metricnames=TokenTransaction&aggregation=total&metricNamespace=microsoft.cognitiveservices%2Faccounts&validatedimensions=false&api-version=2019-07-01'
-                }]
-            }"
-            $resp = Invoke-AzRestMethod -Method POST -Path '/batch?api-version=2015-11-01' -Payload $body
-            $totalTokens += (($resp.Content | ConvertFrom-Json).responses.content.value.timeseries.data | Measure-Object -Property 'total' -Sum).Sum
+            $tokenMetrics = Get-AzMetric -ResourceId $_.id -MetricName "TokenTransaction" -StartTime $startTime -EndTime $endTime -AggregationType Total -MetricNamespace "microsoft.cognitiveservices/accounts" -WarningAction SilentlyContinue
+            $totalTokens += ($tokenMetrics.Data | Measure-Object -Property 'Total' -Sum).Sum
             $null = $dict.TryAdd($_.Id, $totalTokens)
         }
 
