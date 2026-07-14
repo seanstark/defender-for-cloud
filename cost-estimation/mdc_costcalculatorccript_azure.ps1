@@ -42,7 +42,7 @@ resourcecontainers
 | join (
     resources
     | extend type = tolower(type)
-    | where type in ('microsoft.sql/managedinstances', 'microsoft.compute/virtualmachines', 'microsoft.classiccompute/virtualmachines', 'microsoft.hybridcompute/machines', 'microsoft.compute/virtualmachinescalesets', 'microsoft.sql/servers', 'microsoft.storage/storageaccounts', 'microsoft.documentdb/databaseaccounts', 'microsoft.containerregistry/registries', 'microsoft.keyvault/vaults', 'microsoft.web/serverfarms', 'microsoft.dbforpostgresql/servers', 'microsoft.dbforpostgresql/flexibleservers', 'microsoft.dbformysql/servers', 'microsoft.dbformysql/flexibleservers', 'microsoft.dbformariadb/servers', 'microsoft.apimanagement/service', 'microsoft.sqlvirtualmachine/sqlvirtualmachines', 'microsoft.azurearcdata/sqlserverinstances', 'microsoft.cognitiveservices/accounts', 'microsoft.web/sites')
+    | where type in ('microsoft.sql/managedinstances', 'microsoft.compute/virtualmachines', 'microsoft.classiccompute/virtualmachines', 'microsoft.hybridcompute/machines', 'microsoft.compute/virtualmachinescalesets', 'microsoft.sql/servers', 'microsoft.storage/storageaccounts', 'microsoft.documentdb/databaseaccounts', 'microsoft.containerregistry/registries', 'microsoft.keyvault/vaults', 'microsoft.web/serverfarms', 'microsoft.dbforpostgresql/servers', 'microsoft.dbforpostgresql/flexibleservers', 'microsoft.dbformysql/servers', 'microsoft.dbformysql/flexibleservers', 'microsoft.dbformariadb/servers', 'microsoft.apimanagement/service', 'microsoft.sqlvirtualmachine/sqlvirtualmachines', 'microsoft.azurearcdata/sqlserverinstances', 'microsoft.cognitiveservices/accounts', 'microsoft.web/sites','microsoft.containerinstance/containergroups','microsoft.app/containerapps')
     | extend bundleCount = 0, bundleName = pack_array('')
     | extend bundleCount = 0, bundleName = pack_array('arm')
     // Defender for Servers, virtual machines, exclude deallocated
@@ -79,12 +79,16 @@ resourcecontainers
     | extend bundleCount = iff(type == 'microsoft.cognitiveservices/accounts' and kind in ('OpenAI', 'AIServices'), 1, bundleCount), bundleName = iff(type == 'microsoft.cognitiveservices/accounts' and kind in ('OpenAI', 'AIServices'), pack_array('ai'), bundleName)
     // Defender CSPM, serverless
     | extend bundleCount = iff(type == 'microsoft.web/sites' and (tolower(kind) startswith 'app' or tolower(kind) startswith 'functionapp') and not(tolower(kind) contains 'workflowapp'), 1, bundleCount), bundleName = iff(type == 'microsoft.web/sites' and (tolower(kind) startswith 'app' or tolower(kind) startswith 'functionapp') and not(tolower(kind) contains 'workflowapp'), pack_array('serverless'), bundleName)
+    // Defender CSPM, serverless containers
+    | extend bundleCount = iff(type in ('microsoft.containerinstance/containergroups', 'microsoft.app/containerapps') and tolower(tostring(properties.instanceView.state)) == 'running' or tolower(tostring(properties.runningStatus)) in ('running', 'runningatmaxscale'), array_length(array_concat(properties.containers,properties.template.containers)), bundleCount), bundleName = iff(type in ('microsoft.containerinstance/containergroups', 'microsoft.app/containerapps') and tolower(tostring(properties.instanceView.state)) == 'running' or tolower(tostring(properties.runningStatus)) in ('running', 'runningatmaxscale'), pack_array('serverlesscontainers'), bundleName)
     | mv-expand bundleName to typeof(string) limit 2000
     | summarize resourceCount = sum(bundleCount) by subscriptionId, bundleName
     // Update serverless counts to reflect 8:1 billing
     | extend resourceCount = case(
         bundleName == 'serverless' and resourceCount <= 8, 1,
         bundleName == 'serverless' and resourceCount > 8, tolong(ceiling(todouble(resourceCount) / 8.0)),
+        bundleName == 'serverlesscontainers' and resourceCount <= 2, 1,
+        bundleName == 'serverlesscontainers' and resourceCount > 2, tolong(ceiling(todouble(resourceCount) / 2.0)),
         bundleName == 'arm', 1,
         resourceCount
         )
@@ -156,7 +160,7 @@ try {
 }
 
 # *** Collect numbers for resource based plans *** 
-$hourBasedPlans = @("cloudposture", "serverless", "virtualmachines", "appservices", "sqlservers", "sqlservervirtualmachines", "opensourcerelationaldatabases", "storageaccounts", "keyvaults", "arm")
+$hourBasedPlans = @("cloudposture", "serverless", "serverlesscontainers", "virtualmachines", "appservices", "sqlservers", "sqlservervirtualmachines", "opensourcerelationaldatabases", "storageaccounts", "keyvaults", "arm")
 
 # Process the query results
 $threadSafeDictSum = [System.Collections.Concurrent.ConcurrentDictionary[string, PSObject]]::New()
@@ -171,12 +175,13 @@ $queryResults | ForEach-Object -ThrottleLimit 15 -Parallel {
 
     #Get MDC Plan Status
     $restPlan = $plan
-    If ($plan -eq 'serverless'){$restPlan = 'cloudposture'} # Map serverless to cloud posture for accurate plan details retrieval as they are under the same plan in the API
+    If ($plan -in ('serverless','serverlesscontainers')){$restPlan = 'cloudposture'} # Map serverless to cloud posture for accurate plan details retrieval as they are under the same plan in the API
     $planDetails = (Invoke-AzRestMethod -Path "/subscriptions/$subscriptionId/providers/microsoft.security/pricings/$($restPlan )?api-version=2024-01-01").Content | ConvertFrom-Json
     
     If (!($planDetails.properties | get-member -Name SubPlan)) { $planDetails.properties | Add-Member -MemberType NoteProperty -Name SubPlan -Value $null -PassThru | Out-Null }
 
     $legacyPlan = $false
+
     $newPlan = 'N/A'
     If ($planDetails.name -eq 'DNS'){
         $legacyPlan = $true
@@ -195,6 +200,7 @@ $queryResults | ForEach-Object -ThrottleLimit 15 -Parallel {
         'Arm' {'Defender for Resource Manager'}
         'CloudPosture' {'Defender for CSPM'}
         'serverless' {'Defender for CSPM'}
+        'serverlesscontainers' {'Defender for CSPM'}
         'ContainerRegistry' {'Defender for Container Registry'}
         'Containers' {'Defender for Containers'}
         'CosmosDbs' {'Defender for Azure Cosmos DB'}
@@ -212,13 +218,6 @@ $queryResults | ForEach-Object -ThrottleLimit 15 -Parallel {
 
     #Write-Host "Subscription: $subscriptionName, SubscriptionId: $subscriptionId, Plan Name: $plan, Sub Plan: $($planDetails.properties.subPlan), ResourceCount: $resourcesCount"
 
-    # Determine billable units based on the plan name
-    $billableUnits = if ($hourBasedPlans -contains $plan.ToLower()) {
-        730 # Assuming 730 hours in a month
-    } else {
-        0
-    }    
-
     # Compile the subscription results
     $subscriptionResult = [PSCustomObject]@{
         SubscriptionID = $subscriptionId
@@ -226,12 +225,17 @@ $queryResults | ForEach-Object -ThrottleLimit 15 -Parallel {
         Plan = $plan
         PlanName = $planName
         SubPlan = $planDetails.properties.subPlan
-        ResourcesCount = If($plan -eq 'serverless') {$resourcesCount * 8} else {$resourcesCount} # Map serverless resources back to actual count for accurate reporting
-        BillableUnits = $billableUnits
+        # Map serverless resources back to actual count for accurate reporting
+        BillableUnits = $resourcesCount
+        ResourceCount = switch ($plan) {
+            'serverless' { If($resourcesCount -gt 1) { $resourcesCount * 8 } else { $resourcesCount } }
+            'serverlesscontainers' { If($resourcesCount -gt 1) { $resourcesCount * 2 } else { $resourcesCount } }
+            default { $resourcesCount }
+        }
         PlanEnabled = If($planDetails.properties.pricingTier -eq "Standard") { $true } else { $false }
         LegacyPlan = $legacyPlan
         newPlan = $newPlan
-        EnvironmentType = $environmentType
+        EnvironmentType = $USING:environmentType
         RecommendedSubPlan = $null
         ExcludableResources = $null
     }
@@ -666,6 +670,83 @@ if ($runAdditionalDataCollection -eq "yes") {
         $sub.BillableUnits = $tokens
         $sub.ResourcesCount = $openAiResourcesCount
     }
+}
+
+# *** Calculate Cost Estimates for Each Plan *** 
+
+# Meter IDs for Defender for Cloud Plans, the price difference between regions is typically small, so we use East US 2 meters as a reference for cost estimation. CPSM meters are global.
+$meters = '2dc983be-35b7-50dd-8cec-3d31f198019f','3e7687bd-01e0-4342-bad7-7564cdc293db','a562ee45-80fc-516b-a739-efe7123d59b5','5c3a13cf-f401-5070-b805-5834ab6dcfd3','d1503658-0978-5996-a99d-4199fc85545e',
+'ea9a1d7f-4570-5e07-a2b1-e3c763714eae','5ffd6fa6-59ab-5d33-87f0-8a65653d2257','e52121e1-673c-42ec-ba6d-ba032f776ebb','125f3e29-294a-5bf3-bd79-cbe7cc987669',
+'cb0969aa-aaaa-4d6c-ab4b-7e182fa06aff','d168b937-9289-505b-bb69-9da28fab6264','794dfe11-3939-59f8-aa78-25f9b19ed7ed','83f23551-9941-53f1-9088-2e6f2c2b17c3','0fad698c-40bf-4ee1-a096-565fc6f0cddd'
+'ec3b0853-a3fa-5312-8425-f50fb1a33662','9d76fabc-1d5c-5208-8fbd-da65050e30a4','006be79b-30e2-5341-95b6-8c8bde9d7a04','de3493d9-ee03-5785-acf3-8d01b93a4a07','3b5e61ab-7f4d-5d88-8ad8-95fb9b2f1dfe'
+
+# Get list price from Azure Pricing API for the specified meters
+$meterFilter = ($meters | ForEach-Object { "meterId eq '$_'" }) -join ' or '
+
+$retailPrices = @()
+$uri = "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&`$filter=($meterFilter) and (armRegionName eq 'eastus2' or armRegionName eq 'Global')"
+
+try {
+    while ($uri) {
+        $response = Invoke-RestMethod -Method Get -Uri $uri -ErrorAction Stop
+        if ($response.Items) {
+            $retailPrices += $response.Items
+        }
+        # Follow pagination until NextPageLink is empty
+        $uri = $response.NextPageLink
+    }
+} catch {
+    Write-Error "Failed to retrieve retail prices from the Azure Retail Prices API. Error: $_"
+}
+
+ForEach ($retailPrice in $retailPrices) {
+    switch ($retailPrice.unitOfMeasure) {
+        '1/Month' { $retailPrice  | add-member -MemberType NoteProperty -Name monthlyPrice -Value $retailPrice.unitPrice }
+        '1/Hour' { $retailPrice  | add-member -MemberType NoteProperty -Name monthlyPrice -Value ($retailPrice.unitPrice * 730) }
+        '1 GB' { $retailPrice  | add-member -MemberType NoteProperty -Name monthlyPrice -Value $retailPrice.unitPrice }
+    }
+}
+
+foreach ($sub in ($allSubscriptionsResults)) {
+    # Meter Id Mappings to specific plans and sub-plans
+    # Uses the MySQL meter for opensource relational databases as these are all the same price point
+    # Does not account for Storage Account Overages or  Additional Defender for Container Image Scans as these are usually insignificant.
+    $planMeterId = switch ($sub.Plan) {
+        'ai' {'2dc983be-35b7-50dd-8cec-3d31f198019f'}
+        'api' {switch ($sub.Plan) {
+                'P1' {'ec3b0853-a3fa-5312-8425-f50fb1a33662'}
+                'P2' {'9d76fabc-1d5c-5208-8fbd-da65050e30a4'}
+                'P3' {'006be79b-30e2-5341-95b6-8c8bde9d7a04'}
+                'P4' {'de3493d9-ee03-5785-acf3-8d01b93a4a07'}
+                'P5' {'3b5e61ab-7f4d-5d88-8ad8-95fb9b2f1dfe'}
+                Default {'ec3b0853-a3fa-5312-8425-f50fb1a33662'}
+            }
+        }
+        'appservices' {'3e7687bd-01e0-4342-bad7-7564cdc293db'}
+        'arm' {'a562ee45-80fc-516b-a739-efe7123d59b5'}
+        'cloudposture' {'5c3a13cf-f401-5070-b805-5834ab6dcfd3'}
+        'serverless' {'5c3a13cf-f401-5070-b805-5834ab6dcfd3'}
+        'serverlesscontainers' {'5c3a13cf-f401-5070-b805-5834ab6dcfd3'}
+        'containers' {'ea9a1d7f-4570-5e07-a2b1-e3c763714eae'}
+        'cosmosdbs' {'d1503658-0978-5996-a99d-4199fc85545e'}
+        'keyvaults' {'5ffd6fa6-59ab-5d33-87f0-8a65653d2257'}
+        'opensourcerelationaldatabases' {'e52121e1-673c-42ec-ba6d-ba032f776ebb'}
+        'sqlservervirtualmachines' {'125f3e29-294a-5bf3-bd79-cbe7cc987669'}
+        'sqlservers' {'cb0969aa-aaaa-4d6c-ab4b-7e182fa06aff'}
+        'storageaccounts' {switch ($sub.Plan) {
+                'Malware Scanning' {'794dfe11-3939-59f8-aa78-25f9b19ed7ed'}
+                Default {'d168b937-9289-505b-bb69-9da28fab6264'}  
+            }
+        }
+        'virtualmachines' {switch ($sub.Plan) {
+                'P1' {'83f23551-9941-53f1-9088-2e6f2c2b17c3'}
+                'P2' {'0fad698c-40bf-4ee1-a096-565fc6f0cddd'}
+                Default {'83f23551-9941-53f1-9088-2e6f2c2b17c3'}  
+            }
+        }
+    }
+    $estimatedMonthlyCost = ([Math]::Round(($retailPrices | Where-Object { $_.MeterId -eq $planMeterId }).monthlyPrice[0] * $sub.BillableUnits, 2, [System.MidpointRounding]::AwayFromZero)).ToString("F2", [System.Globalization.CultureInfo]::InvariantCulture)
+    $sub | Add-Member -MemberType NoteProperty -Name EstimatedCost -Value $estimatedMonthlyCost -Force
 }
 
 $outputPath = "AzureMDCResourcesEstimation_$(Get-Date -Format 'yyyyMMdd_HHmmss').csv"
