@@ -1,27 +1,4 @@
 #Requires -Version 7.0
-
-<#
-.SYNOPSIS
-    Estimates Microsoft Defender for Cloud monthly costs across every enabled subscription in the tenant.
-.PARAMETER runAdditionalDataCollection
-    Selects the longer-running metric-based collections to include. These query Azure Monitor per resource
-    and can take significantly longer in large environments. Accepts one or more of:
-      None            - skip all additional collection (default)
-      All             - run every additional collection below
-      Api             - APIM request volume over the last 30 days and the recommended API sub-plan
-      CosmosDb        - average Cosmos DB RU/s over the last 30 days
-      MalwareScanning - blob ingress (GB) for the Defender for Storage malware scanning add-on
-      Ai              - Azure OpenAI / AI Services token transactions over the last 30 days
-.EXAMPLE
-    .\mdc_costcalculatorccript_azure.ps1 -runAdditionalDataCollection All
-.EXAMPLE
-    .\mdc_costcalculatorccript_azure.ps1 -runAdditionalDataCollection Api, CosmosDb
-#>
-param(
-    [ValidateSet('None', 'All', 'Containers', 'Api', 'CosmosDb', 'MalwareScanning', 'Ai')]
-    [string[]] $runAdditionalDataCollection = 'None'
-)
-
 # Ensure strict mode is enabled for catching common issues
 Set-StrictMode -Version Latest
 
@@ -51,52 +28,6 @@ try {
     exit
 }
 
-# Retrieve the management group hierarchy for each subscription via Azure Resource Graph.
-# 'managementGroupAncestorsChain' is ordered from the immediate parent up to the tenant root MG.
-$subToMg = @{}
-try {
-    $mgQuery = "
-resourcecontainers
-| where type == 'microsoft.resources/subscriptions'
-| where properties.state == 'Enabled'
-| project subscriptionId, subscriptionName = name, mgChain = properties.managementGroupAncestorsChain
-"
-    $mgResults = @()
-    $mgPageSize = 1000
-    $mgSkipToken = $null
-    while ($true) {
-        if ($mgSkipToken) {
-            $mgPaged = Search-AzGraph -Query $mgQuery -First $mgPageSize -SkipToken $mgSkipToken -UseTenantScope
-        } else {
-            $mgPaged = Search-AzGraph -Query $mgQuery -First $mgPageSize -UseTenantScope
-        }
-        if (-not $mgPaged) { break }
-        $mgResults += $mgPaged.Data
-        $mgSkipToken = $mgPaged.SkipToken
-        if ($mgPaged.Data.Count -lt $mgPageSize) { break }
-    }
-
-    foreach ($row in $mgResults) {
-        $chain = @($row.mgChain)   # immediate parent -> tenant root
-        if ($chain.Count -gt 0) {
-            $rootToLeaf = $chain[($chain.Count - 1)..0]
-            $subToMg[$row.subscriptionId] = [PSCustomObject]@{
-                Path     = ($rootToLeaf | ForEach-Object { $_.displayName }) -join ' / '
-                TopLevel = $rootToLeaf[0].displayName
-                Parent   = $chain[0].displayName
-                ParentId = $chain[0].name
-                Depth    = $chain.Count
-            }
-        } else {
-            $subToMg[$row.subscriptionId] = [PSCustomObject]@{
-                Path = '(No management group)'; TopLevel = '(None)'; Parent = '(None)'; ParentId = $null; Depth = 0
-            }
-        }
-    }
-} catch {
-    Write-Warning "Failed to retrieve management group hierarchy. The management group breakdown will be unavailable. Error: $_"
-}
-
 $environmentType = "Azure"
 
 # Initialize a list to hold results for all subscriptions
@@ -107,11 +38,8 @@ $query = "
 resourcecontainers
 | where type == 'microsoft.resources/subscriptions'
 | where properties.state == 'Enabled'
-| project tenantId, subscriptionId, subscriptionName = name
-// Seed every subscription with the full plan catalogue so plans with no resources still return a row.
-| extend plan = dynamic(['ai','api','appservices','arm','cloudposture','containers','cosmosdbs','keyvaults','opensourcerelationaldatabases','serverless','serverlesscontainers','sqlservers','sqlservervirtualmachines','storageaccounts','virtualmachines','containerregistry','kubernetesservice','dns'])
-| mv-expand plan to typeof(string)
-| join kind=leftouter (
+| project subscriptionId, subscriptionName = name
+| join (
     resources
     | extend type = tolower(type)
     | where type in ('microsoft.sql/managedinstances', 'microsoft.compute/virtualmachines', 'microsoft.classiccompute/virtualmachines', 'microsoft.hybridcompute/machines', 'microsoft.compute/virtualmachinescalesets', 'microsoft.sql/servers', 'microsoft.storage/storageaccounts', 'microsoft.documentdb/databaseaccounts', 'microsoft.containerregistry/registries', 'microsoft.keyvault/vaults', 'microsoft.web/serverfarms', 'microsoft.dbforpostgresql/servers', 'microsoft.dbforpostgresql/flexibleservers', 'microsoft.dbformysql/servers', 'microsoft.dbformysql/flexibleservers', 'microsoft.dbformariadb/servers', 'microsoft.apimanagement/service', 'microsoft.sqlvirtualmachine/sqlvirtualmachines', 'microsoft.azurearcdata/sqlserverinstances', 'microsoft.cognitiveservices/accounts', 'microsoft.web/sites','microsoft.containerinstance/containergroups','microsoft.app/containerapps')
@@ -195,9 +123,8 @@ resourcecontainers
         )
     | project subscriptionId, plan = bundleName, resourceCount
     ) 
-    on subscriptionId, plan
-| extend resourceCount = iff(isnull(resourceCount), 0, resourceCount)
-| project-away subscriptionId1, plan1
+    on subscriptionId
+| project-away subscriptionId1
 "
 
 try {
@@ -235,9 +162,6 @@ try {
 # *** Collect numbers for resource based plans *** 
 $hourBasedPlans = @("cloudposture", "serverless", "serverlesscontainers", "virtualmachines", "appservices", "sqlservers", "sqlservervirtualmachines", "opensourcerelationaldatabases", "storageaccounts", "keyvaults", "arm")
 
-# Get Tenant Name
-$tenantName = (Get-AzTenant -TenantId $queryResults[0].tenantId).Name
-
 # Process the query results
 $threadSafeDictSum = [System.Collections.Concurrent.ConcurrentDictionary[string, PSObject]]::New()
 $queryResults | ForEach-Object -ThrottleLimit 15 -Parallel {
@@ -248,10 +172,6 @@ $queryResults | ForEach-Object -ThrottleLimit 15 -Parallel {
     $key = $subscriptionId + $plan
     $subscriptions = $USING:subscriptions
     $subscriptionName = ($subscriptions | Where-Object { $_.Id -eq $subscriptionId }).Name
-    $subMgMap = $USING:subToMg
-    $mgInfo = $subMgMap[$subscriptionId]
-    $tenantId = $_.tenantId
-    $tenantName = $USING:tenantName
 
     #Get MDC Plan Status
     $restPlan = $plan
@@ -263,22 +183,18 @@ $queryResults | ForEach-Object -ThrottleLimit 15 -Parallel {
     $legacyPlan = $false
 
     $newPlan = 'N/A'
-    If ($plan -eq 'dns'){
+    If ($planDetails.name -eq 'DNS'){
         $legacyPlan = $true
         $newPlan = 'Defender for Servers P2'
-    } elseif ($plan -in ('containerregistry', 'kubernetesservice')){
+    } elseif ($planDetails.name -in ('ContainerRegistry', 'KubernetesService')){
         $legacyPlan = $true
         $newPlan = 'Defender for Containers'
-    } elseif ($plan -in ('keyvaults', 'storageaccounts', 'arm') -and ($planDetails.properties.subPlan -in ('PerApiCall','PerTransaction'))){
+    } elseif ($planDetails.properties.subPlan -in ('PerApiCall','PerTransaction')){
         $legacyPlan = $true
-        switch ($planDetails.properties.subPlan){
-            'PerApiCall' {$newPlan = "Per Key Vault"}
-            'PerTransaction' {
-                switch ($plan){
-                    'storageaccounts' {$newPlan = "Per Storage Account"}
-                    'arm' {$newPlan = "Per Subscription"}
-                }
-            }
+        switch ($planDetails.name){
+            'Defender for Key Vault' {$newPlan = "Per Key Vault"}
+            'Defender for Storage' {$newPlan = "Per Storage Account"}
+            'Defender for Resource Manager' {$newPlan = "Per Subscription"}
         }
     }
 
@@ -307,22 +223,10 @@ $queryResults | ForEach-Object -ThrottleLimit 15 -Parallel {
 
     #Write-Host "Subscription: $subscriptionName, SubscriptionId: $subscriptionId, Plan Name: $plan, Sub Plan: $($planDetails.properties.subPlan), ResourceCount: $resourcesCount"
 
-    # Filter out legacy plans that are not enabled
-    If ($legacyPlan -eq $true -and $planDetails.properties.pricingTier -ne "Standard") {
-        #Write-Host "Skipping legacy plan $plan for subscription $subscriptionName as it is not enabled."
-        return
-    }
-
     # Compile the subscription results
     $subscriptionResult = [PSCustomObject]@{
-        TenantName = $tenantName
-        TenantId = $tenantId
         SubscriptionID = $subscriptionId
         SubscriptionName = $subscriptionName
-        ManagementGroupPath = if ($mgInfo) { $mgInfo.Path } else { '(No management group)' }
-        ManagementGroupTopLevel = if ($mgInfo) { $mgInfo.TopLevel } else { '(None)' }
-        ManagementGroupParent = if ($mgInfo) { $mgInfo.Parent } else { '(None)' }
-        ManagementGroupId = if ($mgInfo) { $mgInfo.ParentId } else { $null }
         Plan = $plan
         PlanName = $planName
         SubPlan = $planDetails.properties.subPlan
@@ -347,21 +251,104 @@ $queryResults | ForEach-Object -ThrottleLimit 15 -Parallel {
 # Add this subscription's results to the list
 $allSubscriptionsResults += $threadSafeDictSum.Values
 
-# Resolve which of the longer-running additional data collections were requested via -runAdditionalDataCollection.
-$allAdditionalCollections = @('Api', 'CosmosDb', 'MalwareScanning', 'Ai')
-$selectedCollections = if ($runAdditionalDataCollection -contains 'All') {
-    $allAdditionalCollections
-} else {
-    @($runAdditionalDataCollection | Where-Object { $_ -ne 'None' })
-}
+# Prompt the user to confirm if they want to run the additional data collection
+$runAdditionalDataCollection = Read-Host "Do you want to run the additional data collection for API, Cosmos DB, and Malware Scanning (storage) plans? Collection of this data can take longer dpending on the size of your environment. (yes/no)"
 
-if ($selectedCollections) {
-    Write-Host "Additional data collection enabled for: $($selectedCollections -join ', '). This can take longer depending on the size of your environment."
-} else {
-    Write-Host "Skipping additional data collection. Re-run with -runAdditionalDataCollection All (or specific sections such as 'Api', 'CosmosDb', 'MalwareScanning', 'Ai') to include it."
-}
+if ($runAdditionalDataCollection -eq "yes") {
 
-if ($selectedCollections -contains 'Api') {
+    # *** Collect data for Defender for Containers plan - based on allocation metric over time for more accureate estimate *** 
+    foreach ($sub in ($allSubscriptionsResults | where {$_.Plan -eq 'containers' -and $_.ResourcesCount -gt 0} )) {
+        Write-Host "Processing Subscription: $($sub.SubscriptionName) - $($sub.SubscriptionID) for containers plan"
+
+        # Initialize variables to hold the total VPU cores and the number of clusters for the current subscription
+        $totalvCoresForSubscription = 0
+        $clustersCount = 0
+
+        # Get all AKS clusters in the subscription
+        try {
+            $aksClustersUri = "/subscriptions/$($sub.SubscriptionID)/providers/Microsoft.ContainerService/managedClusters?api-version=2026-01-01"
+            $arcClustersUri = "/subscriptions/$($sub.SubscriptionID)/providers/microsoft.kubernetes/connectedClusters?api-version=2024-01-01"
+            $response = Invoke-AzRestMethod -Method GET -Path $aksClustersUri -ErrorAction Stop
+            $arcResponse = Invoke-AzRestMethod -Method GET -Path $arcClustersUri -ErrorAction Stop
+            if ($response.StatusCode -eq 200 -or $arcResponse.StatusCode -eq 200) {
+                $aksClusters = $response.Content | ConvertFrom-Json | Select-Object -ExpandProperty value
+                $arcClusters = $arcResponse.Content | ConvertFrom-Json | Select-Object -ExpandProperty value
+            } else {
+                Write-Error "Failed to retrieve AKS clusters. Status code: $($response.StatusCode)"
+                continue
+            }
+
+            if (-not $aksClusters -or -not $arcClusters) {
+                Write-Host "No AKS clusters found in Subscription: $($sub.Name)"
+                continue
+            }
+            $clustersCount = ($aksClusters + $arcClusters | Measure-Object).Count
+        } catch {
+            Write-Error "Failed to retrieve AKS clusters in Subscription: $($sub.SubscriptionName). Error: $_"
+            continue # Continue with the next subscription if this fails
+        }
+
+        # Define the time range for the last 30 days
+        $startTime = (Get-Date).AddDays(-30).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+        $endTime = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+
+        # AKS Clusters
+        $threadSafeDictSum = [System.Collections.Concurrent.ConcurrentDictionary[string, [Int64]]]::New()
+        $aksClusters | ForEach-Object -ThrottleLimit 15 -Parallel {
+            Write-Host "Retrieving average vCores Arc Connected Cluster: $($_.id)"
+            $averageVPUCores = 0
+            $startTime = $USING:startTime
+            $endTime = $USING:endTime
+            $dict = $USING:threadSafeDictSum
+            try {
+                $metrics = Get-AzMetric -ResourceId $_.id -MetricName "kube_node_status_allocatable_cpu_cores" -StartTime $startTime -EndTime $endTime -AggregationType Average -TimeGrain 01:00:00 -WarningAction SilentlyContinue
+                # Exclude metrics that had no data to avoid skewing the average with zeros, as well as metrics that are missing data points for the entire period
+                if ($metrics -ne $null -and $metrics.Data -ne $null) {
+                    $averageVPUCores = [Math]::Round(($metrics.Data | where Average -gt 0 | Measure-Object Average -Average).Average)
+                    Write-Host "Average allocated CPU cores for the past 30 days: $averageVPUCores"
+                    $null = $dict.TryAdd($_.Id, $averageVPUCores)
+                } else {
+                    Write-Host "No data available for allocated CPU cores metric for the past 30 days."
+                }
+            } catch {
+                Write-Host "Error retrieving 'Requests' metric: $_"
+            }
+        }
+
+        $totalvCoresForSubscription += $threadSafeDictSum.Values | Measure-Object -Sum | Select-Object -ExpandProperty Sum
+
+        $threadSafeDictSum = [System.Collections.Concurrent.ConcurrentDictionary[string, [Int64]]]::New()
+        $arcClusters | ForEach-Object -ThrottleLimit 15 -Parallel {
+            Write-Host "Retrieving average vCores Arc Connected Cluster: $($_.id)"
+            $averageVPUCores = 0
+            $startTime = $USING:startTime
+            $endTime = $USING:endTime
+            $dict = $USING:threadSafeDictSum
+            try {
+                $metrics = Get-AzMetric -ResourceId $_.id -MetricName "capacity_cpu_cores" -StartTime $startTime -EndTime $endTime -AggregationType Average -TimeGrain 01:00:00 -WarningAction SilentlyContinue
+                # Exclude metrics that had no data to avoid skewing the average with zeros, as well as metrics that are missing data points for the entire period
+                if ($metrics -ne $null -and $metrics.Data -ne $null) {
+                    $averageVPUCores = [Math]::Round(($metrics.Data | where Average -gt 0 | Measure-Object Average -Average).Average)
+                    Write-Host "Average allocated CPU cores for the past 30 days: $averageVPUCores"
+                    $null = $dict.TryAdd($_.Id, $averageVPUCores)
+                } else {
+                    Write-Host "No data available for allocated CPU cores metric for the past 30 days."
+                }
+            } catch {
+                Write-Host "Error retrieving 'Requests' metric: $_"
+            }
+        }
+
+        $totalvCoresForSubscription += $threadSafeDictSum.Values | Measure-Object -Sum | Select-Object -ExpandProperty Sum
+
+        Write-Host "Total vCores for the subscription over the past 30 days: $totalvCoresForSubscription"
+
+        # Update existing Defender for Containers Plan counts
+        IF ($totalvCoresForSubscription -gt 1){
+            $sub.BillableUnits = $totalvCoresForSubscription
+            $sub.ResourcesCount = $clustersCount
+        }
+    }
 
     # *** Collect numbers for Defender for APIs ***
     foreach ($sub in ($allSubscriptionsResults | where {$_.Plan -eq 'api' -and $_.ResourcesCount -gt 0} )) {
@@ -447,9 +434,6 @@ if ($selectedCollections -contains 'Api') {
         $sub.ResourcesCount = $apimServicesCount
         $sub.RecommendedSubPlan = $recommendedPlan.Plan
     }
-}
-
-if ($selectedCollections -contains 'CosmosDb') {
 
     # *** Collect numbers for Cosmos DB plan ***
     foreach ($sub in ($allSubscriptionsResults | where {$_.Plan -eq 'cosmosdbs' -and $_.ResourcesCount -gt 0} )) {
@@ -591,9 +575,6 @@ if ($selectedCollections -contains 'CosmosDb') {
         $sub.BillableUnits = $averageRUsPerHour
         $sub.ResourcesCount = $cosmosDBAccountsCount
     }
-}
-
-if ($selectedCollections -contains 'MalwareScanning') {
 
     # *** Calculate metrics for Malware Scanning extension for Storage Accounts ***
     foreach ($sub in ($allSubscriptionsResults | where {$_.Plan -eq 'storageaccounts' -and $_.ResourcesCount -gt 0} )) {
@@ -639,10 +620,6 @@ if ($selectedCollections -contains 'MalwareScanning') {
         $subscriptionResult = [PSCustomObject]@{
             SubscriptionID = $sub.SubscriptionID
             SubscriptionName = $sub.SubscriptionName
-            ManagementGroupPath = $sub.ManagementGroupPath
-            ManagementGroupTopLevel = $sub.ManagementGroupTopLevel
-            ManagementGroupParent = $sub.ManagementGroupParent
-            ManagementGroupId = $sub.ManagementGroupId
             Plan = $sub.Plan
             PlanName = $sub.PlanName
             SubPlan = "Malware Scanning"
@@ -658,9 +635,6 @@ if ($selectedCollections -contains 'MalwareScanning') {
 
         $allSubscriptionsResults += $subscriptionResult
     }
-}
-
-if ($selectedCollections -contains 'Ai') {
 
     # *** Calculate metrics for Defender for AI ***
     foreach ($sub in ($allSubscriptionsResults | where {$_.Plan -eq 'ai' -and $_.ResourcesCount -gt 0} )) {
@@ -756,7 +730,6 @@ foreach ($sub in ($allSubscriptionsResults)) {
     # Meter Id Mappings to specific plans and sub-plans
     # Uses the MySQL meter for opensource relational databases as these are all the same price point
     # Does not account for Storage Account Overages or  Additional Defender for Container Image Scans as these are usually insignificant.
-    # Legacy plans will be mapped to the new plan for cost estimation purposes, as the legacy plans are no longer available for new subscriptions.
     $planMeterId = switch ($sub.Plan) {
         'ai' {'2dc983be-35b7-50dd-8cec-3d31f198019f'}
         'api' {switch ($sub.Plan) {
@@ -790,26 +763,12 @@ foreach ($sub in ($allSubscriptionsResults)) {
                 Default {'83f23551-9941-53f1-9088-2e6f2c2b17c3'}  
             }
         }
-        # Legacy plans 
-        'dns' {'0fad698c-40bf-4ee1-a096-565fc6f0cddd'}
-        'kubernetesservice' {'ea9a1d7f-4570-5e07-a2b1-e3c763714eae'}
-        'containerregistry' {'ea9a1d7f-4570-5e07-a2b1-e3c763714eae'}
     }
-    #Write-Host "$($sub.Plan): $planMeterId"
+    Write-Host "$($sub.Plan): $planMeterId"
     #$sub | Select SubscriptionName, Plan, PlanName, BillableUnits
-    #$meter = ($retailPrices | Where-Object { $_.meterId -eq $planMeterId })[0]
-    #Write-Host "$($sub.Plan): $planMeterId, $($meter.productName), $($meter.monthlyPrice)"
-    $monthlyPrice = ($retailPrices | Where-Object { $_.MeterId -eq $planMeterId })[0].monthlyPrice
-
-    # Serverless is billed at half the CSPM meter rate.
-    if ($sub.Plan -eq 'serverless') { $monthlyPrice = $monthlyPrice / 2 }
-    # Legacy containerregistry doesn't really map to any plans anymore, so we will set the monthly price to 0 for cost estimation purposes.
-    if ($sub.Plan -eq 'containerregistry') { $monthlyPrice = 0 }
-    If ($sub.BillableUnits -eq 0){
-        $estimatedMonthlyCost = 0
-    } else {
-        $estimatedMonthlyCost = ([Math]::Round($monthlyPrice * $sub.BillableUnits, 2, [System.MidpointRounding]::AwayFromZero)).ToString("F2", [System.Globalization.CultureInfo]::InvariantCulture)
-    }
+    $meter = ($retailPrices | Where-Object { $_.meterId -eq $planMeterId })[0]
+    Write-Host "$($sub.Plan): $planMeterId, $($meter.productName), $($meter.monthlyPrice)"
+    $estimatedMonthlyCost = ([Math]::Round(($retailPrices | Where-Object { $_.MeterId -eq $planMeterId })[0].monthlyPrice * $sub.BillableUnits, 2, [System.MidpointRounding]::AwayFromZero)).ToString("F2", [System.Globalization.CultureInfo]::InvariantCulture)
     $sub | Add-Member -MemberType NoteProperty -Name estimatedMonthlyCost -Value $estimatedMonthlyCost -Force
 }
 

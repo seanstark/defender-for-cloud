@@ -107,11 +107,8 @@ $query = "
 resourcecontainers
 | where type == 'microsoft.resources/subscriptions'
 | where properties.state == 'Enabled'
-| project tenantId, subscriptionId, subscriptionName = name
-// Seed every subscription with the full plan catalogue so plans with no resources still return a row.
-| extend plan = dynamic(['ai','api','appservices','arm','cloudposture','containers','cosmosdbs','keyvaults','opensourcerelationaldatabases','serverless','serverlesscontainers','sqlservers','sqlservervirtualmachines','storageaccounts','virtualmachines','containerregistry','kubernetesservice','dns'])
-| mv-expand plan to typeof(string)
-| join kind=leftouter (
+| project subscriptionId, subscriptionName = name
+| join (
     resources
     | extend type = tolower(type)
     | where type in ('microsoft.sql/managedinstances', 'microsoft.compute/virtualmachines', 'microsoft.classiccompute/virtualmachines', 'microsoft.hybridcompute/machines', 'microsoft.compute/virtualmachinescalesets', 'microsoft.sql/servers', 'microsoft.storage/storageaccounts', 'microsoft.documentdb/databaseaccounts', 'microsoft.containerregistry/registries', 'microsoft.keyvault/vaults', 'microsoft.web/serverfarms', 'microsoft.dbforpostgresql/servers', 'microsoft.dbforpostgresql/flexibleservers', 'microsoft.dbformysql/servers', 'microsoft.dbformysql/flexibleservers', 'microsoft.dbformariadb/servers', 'microsoft.apimanagement/service', 'microsoft.sqlvirtualmachine/sqlvirtualmachines', 'microsoft.azurearcdata/sqlserverinstances', 'microsoft.cognitiveservices/accounts', 'microsoft.web/sites','microsoft.containerinstance/containergroups','microsoft.app/containerapps')
@@ -195,9 +192,8 @@ resourcecontainers
         )
     | project subscriptionId, plan = bundleName, resourceCount
     ) 
-    on subscriptionId, plan
-| extend resourceCount = iff(isnull(resourceCount), 0, resourceCount)
-| project-away subscriptionId1, plan1
+    on subscriptionId
+| project-away subscriptionId1
 "
 
 try {
@@ -235,9 +231,6 @@ try {
 # *** Collect numbers for resource based plans *** 
 $hourBasedPlans = @("cloudposture", "serverless", "serverlesscontainers", "virtualmachines", "appservices", "sqlservers", "sqlservervirtualmachines", "opensourcerelationaldatabases", "storageaccounts", "keyvaults", "arm")
 
-# Get Tenant Name
-$tenantName = (Get-AzTenant -TenantId $queryResults[0].tenantId).Name
-
 # Process the query results
 $threadSafeDictSum = [System.Collections.Concurrent.ConcurrentDictionary[string, PSObject]]::New()
 $queryResults | ForEach-Object -ThrottleLimit 15 -Parallel {
@@ -250,8 +243,6 @@ $queryResults | ForEach-Object -ThrottleLimit 15 -Parallel {
     $subscriptionName = ($subscriptions | Where-Object { $_.Id -eq $subscriptionId }).Name
     $subMgMap = $USING:subToMg
     $mgInfo = $subMgMap[$subscriptionId]
-    $tenantId = $_.tenantId
-    $tenantName = $USING:tenantName
 
     #Get MDC Plan Status
     $restPlan = $plan
@@ -263,22 +254,18 @@ $queryResults | ForEach-Object -ThrottleLimit 15 -Parallel {
     $legacyPlan = $false
 
     $newPlan = 'N/A'
-    If ($plan -eq 'dns'){
+    If ($planDetails.name -eq 'DNS'){
         $legacyPlan = $true
         $newPlan = 'Defender for Servers P2'
-    } elseif ($plan -in ('containerregistry', 'kubernetesservice')){
+    } elseif ($planDetails.name -in ('ContainerRegistry', 'KubernetesService')){
         $legacyPlan = $true
         $newPlan = 'Defender for Containers'
-    } elseif ($plan -in ('keyvaults', 'storageaccounts', 'arm') -and ($planDetails.properties.subPlan -in ('PerApiCall','PerTransaction'))){
+    } elseif ($planDetails.properties.subPlan -in ('PerApiCall','PerTransaction')){
         $legacyPlan = $true
-        switch ($planDetails.properties.subPlan){
-            'PerApiCall' {$newPlan = "Per Key Vault"}
-            'PerTransaction' {
-                switch ($plan){
-                    'storageaccounts' {$newPlan = "Per Storage Account"}
-                    'arm' {$newPlan = "Per Subscription"}
-                }
-            }
+        switch ($planDetails.name){
+            'Defender for Key Vault' {$newPlan = "Per Key Vault"}
+            'Defender for Storage' {$newPlan = "Per Storage Account"}
+            'Defender for Resource Manager' {$newPlan = "Per Subscription"}
         }
     }
 
@@ -307,16 +294,8 @@ $queryResults | ForEach-Object -ThrottleLimit 15 -Parallel {
 
     #Write-Host "Subscription: $subscriptionName, SubscriptionId: $subscriptionId, Plan Name: $plan, Sub Plan: $($planDetails.properties.subPlan), ResourceCount: $resourcesCount"
 
-    # Filter out legacy plans that are not enabled
-    If ($legacyPlan -eq $true -and $planDetails.properties.pricingTier -ne "Standard") {
-        #Write-Host "Skipping legacy plan $plan for subscription $subscriptionName as it is not enabled."
-        return
-    }
-
     # Compile the subscription results
     $subscriptionResult = [PSCustomObject]@{
-        TenantName = $tenantName
-        TenantId = $tenantId
         SubscriptionID = $subscriptionId
         SubscriptionName = $subscriptionName
         ManagementGroupPath = if ($mgInfo) { $mgInfo.Path } else { '(No management group)' }
@@ -756,7 +735,6 @@ foreach ($sub in ($allSubscriptionsResults)) {
     # Meter Id Mappings to specific plans and sub-plans
     # Uses the MySQL meter for opensource relational databases as these are all the same price point
     # Does not account for Storage Account Overages or  Additional Defender for Container Image Scans as these are usually insignificant.
-    # Legacy plans will be mapped to the new plan for cost estimation purposes, as the legacy plans are no longer available for new subscriptions.
     $planMeterId = switch ($sub.Plan) {
         'ai' {'2dc983be-35b7-50dd-8cec-3d31f198019f'}
         'api' {switch ($sub.Plan) {
@@ -790,10 +768,6 @@ foreach ($sub in ($allSubscriptionsResults)) {
                 Default {'83f23551-9941-53f1-9088-2e6f2c2b17c3'}  
             }
         }
-        # Legacy plans 
-        'dns' {'0fad698c-40bf-4ee1-a096-565fc6f0cddd'}
-        'kubernetesservice' {'ea9a1d7f-4570-5e07-a2b1-e3c763714eae'}
-        'containerregistry' {'ea9a1d7f-4570-5e07-a2b1-e3c763714eae'}
     }
     #Write-Host "$($sub.Plan): $planMeterId"
     #$sub | Select SubscriptionName, Plan, PlanName, BillableUnits
@@ -803,13 +777,8 @@ foreach ($sub in ($allSubscriptionsResults)) {
 
     # Serverless is billed at half the CSPM meter rate.
     if ($sub.Plan -eq 'serverless') { $monthlyPrice = $monthlyPrice / 2 }
-    # Legacy containerregistry doesn't really map to any plans anymore, so we will set the monthly price to 0 for cost estimation purposes.
-    if ($sub.Plan -eq 'containerregistry') { $monthlyPrice = 0 }
-    If ($sub.BillableUnits -eq 0){
-        $estimatedMonthlyCost = 0
-    } else {
-        $estimatedMonthlyCost = ([Math]::Round($monthlyPrice * $sub.BillableUnits, 2, [System.MidpointRounding]::AwayFromZero)).ToString("F2", [System.Globalization.CultureInfo]::InvariantCulture)
-    }
+
+    $estimatedMonthlyCost = ([Math]::Round($monthlyPrice * $sub.BillableUnits, 2, [System.MidpointRounding]::AwayFromZero)).ToString("F2", [System.Globalization.CultureInfo]::InvariantCulture)
     $sub | Add-Member -MemberType NoteProperty -Name estimatedMonthlyCost -Value $estimatedMonthlyCost -Force
 }
 

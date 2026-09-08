@@ -1,0 +1,1725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Microsoft Defender for Cloud — Cost Estimation Report</title>
+<style>
+  :root {
+    /* Palette */
+    --bg: #f3f4f8;
+    --panel: #ffffff;
+    --panel-alt: #fafbfd;
+    --ink: #1c2333;
+    --ink-2: #3d465c;
+    --muted: #6b7488;
+    --line: #e4e8f0;
+    --line-strong: #d3d9e6;
+    --brand: #0f6cbd;
+    --brand-strong: #10508c;
+    --brand-soft: #eaf2fb;
+    --accent-2: #6b57e0;
+    --good: #0e6b3d;
+    --good-bg: #e6f4ec;
+    --bad: #b3261e;
+    --bad-bg: #fdecea;
+    --warn: #96560a;
+    --warn-bg: #fdf3e2;
+
+    /* Elevation */
+    --shadow-1: 0 1px 2px rgba(20, 27, 45, .05), 0 1px 3px rgba(20, 27, 45, .06);
+    --shadow-2: 0 2px 6px rgba(20, 27, 45, .07), 0 8px 20px rgba(20, 27, 45, .06);
+
+    /* Shape + rhythm */
+    --r-sm: 6px;
+    --r-md: 8px;
+    --r-lg: 12px;
+    --s-1: 4px;
+    --s-2: 8px;
+    --s-3: 12px;
+    --s-4: 16px;
+    --s-5: 20px;
+    --s-6: 24px;
+
+    --sans: "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, "Cascadia Mono", SFMono-Regular, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--brand); text-underline-offset: 2px; }
+  a:hover { color: var(--brand-strong); }
+  :focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: var(--r-sm); }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  }
+
+  /* ---------- Layout ---------- */
+  .layout { display: grid; grid-template-columns: 252px minmax(0, 1fr); min-height: 100vh; }
+  .main { min-width: 0; padding: var(--s-6) var(--s-6) 64px; }
+
+  .sidebar {
+    background: linear-gradient(180deg, #131b2b 0%, #0d1421 100%);
+    color: #c8d1e2;
+    padding: var(--s-5) var(--s-3);
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-5);
+    border-right: 1px solid #0a101b;
+  }
+  .side-brand { display: flex; align-items: center; gap: 10px; padding: 2px 8px var(--s-2); }
+  .side-brand .logo { width: 30px; height: 30px; display: grid; place-items: center; border-radius: var(--r-md); background: linear-gradient(135deg, var(--brand), var(--accent-2)); color: #fff; flex: none; }
+  .side-title { font-weight: 600; font-size: 14px; color: #fff; letter-spacing: -.1px; }
+  .side-sub { font-size: 11.5px; color: #8595b3; }
+  .side-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em; color: #71809e; padding: 0 10px var(--s-1); font-weight: 600; }
+  .side-nav { display: flex; flex-direction: column; gap: 2px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 10px; border-radius: var(--r-md);
+    color: #c8d1e2; text-decoration: none; font-size: 13.5px;
+    transition: background .15s, color .15s;
+  }
+  .nav-item .ico { width: 18px; height: 18px; flex: none; display: grid; place-items: center; opacity: .85; }
+  .nav-item:hover { background: rgba(255, 255, 255, .07); color: #fff; }
+  .nav-item:hover .ico { opacity: 1; }
+  .nav-item.active { background: linear-gradient(135deg, var(--brand), var(--accent-2)); color: #fff; box-shadow: 0 2px 8px rgba(15, 108, 189, .35); }
+  .nav-item.active .ico { opacity: 1; }
+  .side-foot { margin-top: auto; display: flex; flex-direction: column; gap: var(--s-2); padding: 0 2px; }
+  .side-foot .hint { color: #8595b3; font-size: 11.5px; text-align: center; }
+
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { height: auto; position: relative; gap: var(--s-3); }
+    .side-nav { flex-direction: row; flex-wrap: wrap; }
+    .nav-item { flex: 1 1 auto; }
+    .side-label { display: none; }
+    .side-foot { margin-top: var(--s-2); flex-direction: row; align-items: center; }
+    .main { padding: var(--s-4) var(--s-4) 48px; }
+  }
+
+  /* ---------- Page header ---------- */
+  header.top { margin-bottom: var(--s-5); }
+  .brand h1 { font-size: 22px; margin: 0 0 2px; letter-spacing: -.3px; font-weight: 600; }
+  .brand p { margin: 0; color: var(--muted); font-size: 13px; max-width: 90ch; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 7px; margin-top: 10px;
+    font-size: 11.5px; color: var(--ink-2); background: var(--panel);
+    border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px 4px 10px;
+    box-shadow: var(--shadow-1);
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--good); flex: none; box-shadow: 0 0 0 3px var(--good-bg); }
+
+  /* ---------- Controls ---------- */
+  .btn {
+    font: inherit; font-size: 13px; cursor: pointer;
+    border: 1px solid var(--line-strong); background: var(--panel); color: var(--ink);
+    border-radius: var(--r-md); padding: 8px 14px; box-shadow: var(--shadow-1);
+    transition: border-color .15s, color .15s, background .15s;
+  }
+  .btn:hover { border-color: var(--brand); color: var(--brand); }
+  .btn.primary { background: var(--brand); color: #fff; border-color: var(--brand); }
+  .btn.primary:hover { background: var(--brand-strong); border-color: var(--brand-strong); color: #fff; }
+  .btn.sm { padding: 5px 10px; font-size: 12px; box-shadow: none; }
+  .hint { font-size: 11.5px; color: var(--muted); }
+
+  select, input[type="text"], input[type="number"] {
+    font: inherit; font-size: 13px; padding: 7px 10px;
+    border: 1px solid var(--line-strong); border-radius: var(--r-md);
+    background: #fff; color: var(--ink); min-width: 130px;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  select:hover, input:hover { border-color: #b9c2d6; }
+  select:focus, input:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px rgba(15, 108, 189, .16); }
+
+  .filters {
+    position: sticky; top: var(--s-3); z-index: 30;
+    background: rgba(255, 255, 255, .92); backdrop-filter: blur(8px);
+    border: 1px solid var(--line); border-radius: var(--r-lg);
+    padding: var(--s-3) var(--s-4); box-shadow: var(--shadow-2);
+    display: flex; gap: var(--s-4); flex-wrap: wrap; align-items: flex-end;
+    margin-bottom: var(--s-5);
+  }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field > label { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; font-weight: 600; }
+  .field.actions { justify-content: flex-end; }
+  .filters .spacer { flex: 1 1 auto; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip {
+    font: inherit; font-size: 12px; padding: 6px 12px; border-radius: 999px;
+    border: 1px solid var(--line-strong); background: #fff; cursor: pointer; color: var(--muted);
+    transition: all .15s;
+  }
+  .chip:hover { border-color: var(--brand); color: var(--brand); }
+  .chip.active { background: var(--brand); color: #fff; border-color: var(--brand); }
+
+  /* ---------- KPI cards ---------- */
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(196px, 1fr)); gap: var(--s-4); margin: 0 0 var(--s-5); }
+  .kpi {
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-lg);
+    padding: var(--s-4) var(--s-4) var(--s-4);
+    box-shadow: var(--shadow-1); transition: box-shadow .18s, transform .18s;
+  }
+  .kpi:hover { box-shadow: var(--shadow-2); transform: translateY(-1px); }
+  .kpi .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; font-weight: 600; }
+  .kpi .value { font-size: 27px; font-weight: 650; margin-top: 6px; letter-spacing: -.6px; font-variant-numeric: tabular-nums; line-height: 1.15; }
+  .kpi .sub { font-size: 12px; color: var(--muted); margin-top: 5px; }
+  .kpi.hero { background: linear-gradient(135deg, #0f6cbd 0%, #4a5fd6 55%, #6b57e0 100%); border: none; color: #fff; box-shadow: 0 4px 16px rgba(15, 108, 189, .28); }
+  .kpi.hero .label, .kpi.hero .sub { color: rgba(255, 255, 255, .86); }
+
+  /* ---------- Panels ---------- */
+  .panel {
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-lg);
+    box-shadow: var(--shadow-1); margin-bottom: var(--s-5); overflow: hidden;
+  }
+  .panel > h2 {
+    font-size: 14.5px; font-weight: 600; margin: 0;
+    padding: var(--s-3) var(--s-4); border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; gap: var(--s-2); background: var(--panel-alt);
+  }
+  .panel > h2 .count {
+    font-size: 11px; color: var(--muted); font-weight: 600;
+    background: #eef1f7; border-radius: 999px; padding: 2px 8px; line-height: 1.6;
+  }
+  .panel > h2 .h2-actions { margin-left: auto; display: flex; gap: 6px; }
+  .section-note { padding: var(--s-3) var(--s-4); color: var(--muted); font-size: 12.5px; border-bottom: 1px solid var(--line); background: #fcfdff; }
+  .section-note b { color: var(--ink-2); }
+  .subhead { font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); padding: var(--s-3) var(--s-4) var(--s-1); font-weight: 700; }
+  .empty { padding: 56px var(--s-5); text-align: center; color: var(--muted); }
+
+  .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: var(--s-5); margin-bottom: var(--s-5); align-items: stretch; }
+  .grid-2 > .panel { margin-bottom: 0; display: flex; flex-direction: column; }
+  .grid-2 > .panel > .bars { flex: 1; }
+
+  /* ---------- Tables ---------- */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--muted); font-weight: 700; padding: 10px var(--s-4);
+    border-bottom: 1px solid var(--line); white-space: nowrap;
+    background: var(--panel-alt); position: sticky; top: 0; z-index: 2;
+  }
+  table[data-tid] thead th { cursor: pointer; user-select: none; transition: color .15s, background .15s; }
+  table[data-tid] thead th:hover { color: var(--brand); background: #f1f5fb; }
+  thead th.num, td.num, tfoot td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  thead th .arrow { opacity: .35; font-size: 9px; margin-left: 4px; }
+  thead th.sorted { color: var(--brand); }
+  thead th.sorted .arrow { opacity: 1; }
+  tbody td { padding: 9px var(--s-4); border-bottom: 1px solid #eef1f7; }
+  tbody tr { transition: background .12s; }
+  tbody tr:hover { background: #f6f9fe; }
+  tbody tr:last-child td { border-bottom: none; }
+  tfoot td {
+    padding: 10px var(--s-4); font-weight: 700; border-top: 1px solid var(--line-strong);
+    background: var(--panel-alt); position: sticky; bottom: 0;
+  }
+
+  .tbl-scroll, .tbl-wide { max-height: 620px; overflow: auto; overscroll-behavior: contain; }
+  .tbl-wide table { min-width: 1000px; }
+  .tbl-plain { overflow-x: auto; }
+  .tbl-scroll::-webkit-scrollbar, .tbl-wide::-webkit-scrollbar, .tbl-plain::-webkit-scrollbar { width: 10px; height: 10px; }
+  .tbl-scroll::-webkit-scrollbar-thumb, .tbl-wide::-webkit-scrollbar-thumb, .tbl-plain::-webkit-scrollbar-thumb { background: #cfd6e4; border-radius: 999px; border: 2px solid #fff; }
+  .tbl-scroll::-webkit-scrollbar-thumb:hover, .tbl-wide::-webkit-scrollbar-thumb:hover, .tbl-plain::-webkit-scrollbar-thumb:hover { background: #b3bdd0; }
+
+  .money { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .muted { color: var(--muted); }
+  .badge {
+    display: inline-block; padding: 2px 8px; border-radius: 999px;
+    font-size: 11px; font-weight: 600; white-space: nowrap; line-height: 1.55;
+  }
+  .badge.on { background: var(--good-bg); color: var(--good); }
+  .badge.off { background: var(--bad-bg); color: var(--bad); }
+  .badge.legacy { background: var(--warn-bg); color: var(--warn); }
+  .badge.plan { background: #eef2fb; color: #33507e; }
+  .badge.sub { background: #e9eefb; color: #2c4a86; }
+  .badge.newplan { background: var(--good-bg); color: var(--good); }
+
+  /* ---------- Bar charts ---------- */
+  .bars { padding: var(--s-4); display: flex; flex-direction: column; gap: var(--s-3); }
+  .bar-row { display: grid; grid-template-columns: minmax(120px, 200px) minmax(60px, 1fr) auto; gap: var(--s-3); align-items: center; }
+  .bar-row .name { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-2); }
+  .bar-track { background: #eef1f7; border-radius: 999px; height: 18px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--brand), var(--accent-2)); min-width: 3px; transition: width .35s ease; }
+  .bar-row .val { font-size: 12px; font-variant-numeric: tabular-nums; font-weight: 600; min-width: 84px; text-align: right; white-space: nowrap; }
+  /* Management group charts: value column takes exactly the width the text needs, bars get the rest. */
+  .bars.mg .bar-row { grid-template-columns: minmax(80px, 150px) minmax(70px, 1fr) max-content; gap: var(--s-2); }
+  .bars.mg .bar-row .name { font-size: 12px; }
+  .bars.mg .bar-row .val { text-align: left; white-space: nowrap; min-width: 0; font-size: 11.5px; }
+  .enable-bar { cursor: pointer; padding: 6px var(--s-2); margin: -2px calc(var(--s-2) * -1); border-radius: var(--r-md); }
+  .enable-bar:hover { background: #f4f8fe; }
+  .enable-bar.active { background: var(--brand-soft); box-shadow: inset 0 0 0 1px #c9dff5; }
+  .enable-bar .val { min-width: 0; font-weight: 500; }
+  .enable-bar .val b { font-weight: 700; }
+
+  /* ---------- Accordion ---------- */
+  .acc-list { padding: var(--s-3) var(--s-4) var(--s-4); display: flex; flex-direction: column; gap: var(--s-2); }
+  details.acc { border: 1px solid var(--line); border-radius: var(--r-md); background: #fff; overflow: hidden; }
+  details.acc > summary {
+    cursor: pointer; list-style: none; padding: 11px var(--s-3);
+    display: grid; grid-template-columns: minmax(160px, 1fr) repeat(4, auto);
+    gap: var(--s-4); align-items: center; font-size: 13px;
+  }
+  details.acc > summary::-webkit-details-marker { display: none; }
+  details.acc > summary:hover { background: #f6f9fe; }
+  details.acc[open] > summary { border-bottom: 1px solid var(--line); background: var(--panel-alt); }
+  .acc .sumname { font-weight: 600; display: flex; align-items: center; gap: var(--s-2); min-width: 0; }
+  .acc .sumval { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .acc .caret { transition: transform .15s; color: var(--muted); display: inline-block; flex: none; }
+  details.acc[open] .caret { transform: rotate(90deg); }
+  .acc .inner { padding-bottom: var(--s-2); }
+  .acc .inner thead th { background: #fff; }
+
+  /* ---------- Discount banner ---------- */
+  .disc-banner {
+    display: flex; gap: var(--s-3); align-items: flex-start;
+    background: linear-gradient(135deg, #eef6ff, #f4f0ff);
+    border: 1px solid #cfe0f6; color: #11406f;
+    border-radius: var(--r-lg); padding: var(--s-3) var(--s-4);
+    margin-bottom: var(--s-5); font-size: 13px; box-shadow: var(--shadow-1);
+  }
+  .disc-banner .disc-ico { flex: none; line-height: 1; margin-top: 1px; }
+  .disc-banner a { color: var(--brand); font-weight: 600; }
+  .disc-banner details { flex: 1; min-width: 0; }
+  .disc-details summary { cursor: pointer; list-style: none; }
+  .disc-details summary::-webkit-details-marker { display: none; }
+  .disc-expand { color: var(--brand); font-weight: 600; text-decoration: underline; white-space: nowrap; }
+  .disc-details[open] .disc-expand::after { content: " (hide)"; }
+  .disc-list { margin-top: var(--s-3); background: #fff; border: 1px solid #d9e6f7; border-radius: var(--r-md); overflow: hidden; }
+  .disc-list table { font-size: 12.5px; }
+  .disc-list thead th { background: #f4f9ff; position: static; }
+
+  /* ---------- Pricing page ---------- */
+  .pricing-form { display: flex; gap: var(--s-4); padding: var(--s-4); flex-wrap: wrap; align-items: center; }
+  .discinput { width: 116px; min-width: 0; }
+  code.meter {
+    font-family: var(--mono); font-size: 11px; background: #f2f5fa;
+    border: 1px solid var(--line); border-radius: var(--r-sm); padding: 2px 6px;
+    color: #44536b; white-space: nowrap;
+  }
+  .calc { padding: var(--s-4); font-size: 13px; color: var(--ink-2); }
+  .calc p { margin: 0 0 var(--s-3); }
+  .calc p:last-child { margin-bottom: 0; }
+  .calc code { background: #f2f5fa; border: 1px solid var(--line); border-radius: var(--r-sm); padding: 1px 6px; font-family: var(--mono); font-size: 12px; }
+  .calc ul { margin: var(--s-2) 0; padding-left: var(--s-5); }
+  .calc li { margin: 4px 0; }
+  .linkrow { padding: var(--s-4); display: flex; gap: var(--s-3); flex-wrap: wrap; align-items: center; }
+  .linkrow a.btn { text-decoration: none; }
+
+  /* ---------- Callouts ---------- */
+  .panel.callout { border-left: 3px solid var(--warn); }
+  .panel.callout > h2 { background: var(--warn-bg); color: #6f3f06; }
+  .cspm-info { text-decoration: underline dotted; text-underline-offset: 3px; cursor: help; }
+
+  /* ---------- Management group tree ---------- */
+  .mgtree td { vertical-align: middle; }
+  .mgtree tbody tr.is-sub { background: #fcfdff; }
+  .mgtree tbody tr.is-sub:hover { background: #f4f8fe; }
+  .tname { display: inline-flex; align-items: center; min-width: 0; }
+  .tcaret, .tcaret-empty {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 18px; height: 18px; border-radius: var(--r-sm);
+    color: var(--muted); cursor: pointer; font-size: 10px; flex: none; transition: transform .15s, background .15s;
+  }
+  .tcaret:hover { background: #e8eef8; color: var(--brand); }
+  .tcaret.open { transform: rotate(90deg); }
+  .tcaret-empty { cursor: default; }
+  .ticon { margin: 0 var(--s-2) 0 5px; display: inline-flex; flex: none; }
+  .tlabel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mgsub { color: var(--brand); font-weight: 600; }
+  .cov { min-width: 180px; max-width: 300px; }
+  .cov-label { font-size: 11.5px; font-variant-numeric: tabular-nums; color: var(--ink-2); font-weight: 600; }
+  .cov-track { height: 4px; background: #e6ebf4; border-radius: 999px; margin-top: 5px; overflow: hidden; }
+  .cov-fill { height: 100%; background: var(--brand); border-radius: 999px; transition: width .35s ease; }
+  .cov-fill.partial { background: linear-gradient(90deg, var(--warn), #e0a44a); }
+  .cov-fill.none { background: var(--bad); }
+  .cov-sub { display: block; margin-top: 5px; font-size: 10.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .cov-flags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+  .cov-flags .badge { font-size: 10px; padding: 1px 7px; }
+
+  /* Per-plan coverage: a compact toggle in the cell, breakdown in a full-width row below. */
+  .pl-toggle {
+    display: inline-flex; align-items: center; gap: 5px; margin-top: 7px;
+    font: inherit; font-size: 10.5px; font-weight: 600; color: var(--brand);
+    background: none; border: 0; padding: 2px 8px 2px 4px; border-radius: 999px; cursor: pointer;
+  }
+  .pl-toggle:hover { background: #e8eef8; }
+  .pl-caret { font-size: 8px; transition: transform .15s ease; }
+  .pl-toggle.open .pl-caret { transform: rotate(90deg); }
+
+  .mgtree tr.mgplans > td { padding: 0 var(--s-3) var(--s-3); border-top: 0; }
+  .pwrap { background: #f7f9fd; border: 1px solid var(--line); border-radius: var(--r-md); padding: var(--s-2) var(--s-3); }
+  .pwrap-title { font-size: 10.5px; font-weight: 700; color: var(--ink-2); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 7px; }
+  .pgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 4px 14px; }
+  .pitem { display: grid; grid-template-columns: 1fr auto; align-items: baseline; column-gap: 6px; padding: 2px 0; }
+  .pname { font-size: 11px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ppct { font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+  .pbar { grid-column: 1 / -1; height: 3px; background: #e6ebf4; border-radius: 999px; overflow: hidden; }
+  .pbar > div { height: 100%; border-radius: 999px; background: var(--brand); }
+  .pitem.full .ppct { color: var(--brand-strong); }
+  .pitem.part .ppct { color: var(--warn); }
+  .pitem.part .pbar > div { background: var(--warn); }
+  .pitem.off .pname, .pitem.off .ppct { color: var(--muted); }
+  .mgtree th:last-child, .mgtree td:last-child { width: 34%; }
+
+  footer { text-align: center; color: var(--muted); font-size: 11.5px; margin-top: var(--s-6); padding-top: var(--s-4); border-top: 1px solid var(--line); }
+  .drag-over { outline: 3px dashed var(--brand); outline-offset: -8px; }
+
+  /* ---------- Print ---------- */
+  @media print {
+    .sidebar, .filters, .btn, .side-foot { display: none !important; }
+    .layout { grid-template-columns: 1fr; }
+    .main { padding: 0; }
+    body { background: #fff; font-size: 11px; }
+    .panel { break-inside: avoid; box-shadow: none; border-color: #ccc; }
+    .kpi { break-inside: avoid; box-shadow: none; }
+    .kpi.hero { background: #eef2fb !important; color: #10233d !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    .kpi.hero .label, .kpi.hero .sub { color: #445 !important; }
+    .tbl-scroll, .tbl-wide, .tbl-plain { max-height: none; overflow: visible; }
+    thead th { position: static; }
+    tfoot td { position: static; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="side-brand">
+      <div class="logo" aria-hidden="true">
+        <svg width="17" height="17" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round">
+          <path d="M9 1.7 15 4v5c0 3.6-2.5 6.4-6 7.3C5.5 15.4 3 12.6 3 9V4l6-2.3Z" />
+        </svg>
+      </div>
+      <div>
+        <div class="side-title">Defender for Cloud</div>
+        <div class="side-sub">Cost Estimation</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="side-label">Report</div>
+      <nav class="side-nav" id="sideNav" aria-label="Report pages">
+        <a href="#" class="nav-item active" data-page="overview">
+          <span class="ico" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2.2" y="2.2" width="5.6" height="5.6" rx="1.2"/><rect x="10.2" y="2.2" width="5.6" height="5.6" rx="1.2"/><rect x="2.2" y="10.2" width="5.6" height="5.6" rx="1.2"/><rect x="10.2" y="10.2" width="5.6" height="5.6" rx="1.2"/></svg></span>
+          Overview
+        </a>
+        <a href="#" class="nav-item" data-page="legacy">
+          <span class="ico" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M2.6 8.5V3.4a.8.8 0 0 1 .8-.8h5.1l6.9 6.9a.8.8 0 0 1 0 1.2l-4.9 4.9a.8.8 0 0 1-1.2 0L2.6 8.5Z"/><circle cx="6" cy="6" r="1.1"/></svg></span>
+          Deprecated Plans
+        </a>
+        <a href="#" class="nav-item" data-page="assignments">
+          <span class="ico" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6.4 4.6h9M6.4 9h9M6.4 13.4h9"/><circle cx="3.1" cy="4.6" r="1.1"/><circle cx="3.1" cy="9" r="1.1"/><circle cx="3.1" cy="13.4" r="1.1"/></svg></span>
+          All Plan Assignments
+        </a>
+        <a href="#" class="nav-item" data-page="bysub">
+          <span class="ico" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M9 2.2 16 5.9 9 9.6 2 5.9 9 2.2Z"/><path d="m2.6 9.4 6.4 3.4 6.4-3.4"/></svg></span>
+          Plan by Subscription
+        </a>
+        <a href="#" class="nav-item" data-page="bymg">
+          <span class="ico" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="6.4" y="1.9" width="5.2" height="4.1" rx=".9"/><rect x="1.5" y="11.9" width="5.2" height="4.1" rx=".9"/><rect x="11.3" y="11.9" width="5.2" height="4.1" rx=".9"/><path d="M9 6v3.2M4.1 11.9V9.2h9.8v2.7"/></svg></span>
+          By Management Group
+        </a>
+        <a href="#" class="nav-item" data-page="pricing">
+          <span class="ico" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="9" r="6.6"/><path d="M11.1 6.4a2.9 2.9 0 0 0-2.1-.8c-1.2 0-2.1.7-2.1 1.6 0 2.2 4.3 1.2 4.3 3.4 0 1-.9 1.7-2.2 1.7-1 0-1.9-.35-2.4-.9M9 4.5v9"/></svg></span>
+          Pricing Details
+        </a>
+      </nav>
+    </div>
+
+    <div class="side-foot">
+      <input type="file" id="fileInput" accept=".csv" hidden />
+      <button class="btn primary" id="loadBtn" type="button">Load CSV…</button>
+      <span class="hint">or drag &amp; drop a CSV anywhere</span>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="top">
+      <div class="brand">
+        <h1 id="pageTitle">Overview</h1>
+        <p id="pageDesc">Interactive breakdown of estimated monthly plan costs across your Azure subscriptions.</p>
+        <span class="pill"><span class="dot" aria-hidden="true"></span><span id="sourceInfo">Loading embedded data…</span></span>
+      </div>
+    </header>
+
+    <div class="filters" id="filters">
+      <div class="field">
+        <label for="fMgName">Management group</label>
+        <select id="fMgName"><option value="">All management groups</option></select>
+      </div>
+      <div class="field">
+        <label for="fSub">Subscription</label>
+        <select id="fSub"><option value="">All subscriptions</option></select>
+      </div>
+      <div class="field">
+        <label for="fPlan">Plan</label>
+        <select id="fPlan"><option value="">All plans</option></select>
+      </div>
+      <div class="field">
+        <label for="fSearch">Search</label>
+        <input type="text" id="fSearch" placeholder="Filter by any text…" />
+      </div>
+      <div class="field">
+        <label id="statusLbl">Status</label>
+        <div class="chips" id="fStatus" role="group" aria-labelledby="statusLbl">
+          <button type="button" class="chip active" data-v="all">All</button>
+          <button type="button" class="chip" data-v="enabled">Enabled</button>
+          <button type="button" class="chip" data-v="disabled">Not enabled</button>
+          <button type="button" class="chip" data-v="legacy">Deprecated</button>
+        </div>
+      </div>
+      <div class="spacer"></div>
+      <div class="field actions">
+        <button class="btn" id="resetBtn" type="button">Reset filters</button>
+      </div>
+    </div>
+
+    <div id="content"></div>
+
+    <footer>
+      Generated from the Azure Defender for Cloud cost-estimation export · Prices are estimates in USD and may not
+      reflect negotiated discounts, taxes, or overage charges.
+    </footer>
+  </main>
+</div>
+
+<!-- Embedded CSV export. Replaced by the loader if a new file is dropped/selected. -->
+<script id="embedded-csv" type="text/plain">
+"SubscriptionID","SubscriptionName","ManagementGroupPath","ManagementGroupTopLevel","ManagementGroupParent","ManagementGroupId","Plan","PlanName","SubPlan","BillableUnits","ResourceCount","PlanEnabled","LegacyPlan","newPlan","EnvironmentType","RecommendedSubPlan","ExcludableResources","estimatedMonthlyCost"
+"99005f96-e572-4035-b476-836fd9d83d64","Management","Tenant Root Group / Azure Landing Zones / Platform / Management","Tenant Root Group","Management","management","virtualmachines","Defender for Servers","P2","33","33","True","False","N/A","Azure",,,"161.88"
+"09b43e75-fc00-4e20-b099-75be4b994d85","ASH Automation","Tenant Root Group","Tenant Root Group","Tenant Root Group","0527ecb7-06fb-4769-b324-fd4a3bb865eb","cloudposture","Defender for CSPM",,"1","1","True","False","N/A","Azure",,,"5.11"
+"34d58fcf-b44c-4c75-b18d-37a49e3018c9","Purview","Tenant Root Group / Azure Landing Zones / Landing zones / Corp","Tenant Root Group","Corp","corp","ai","Defender for AI services",,"1","1","True","False","N/A","Azure",,,"0.00"
+"7de52e6d-d9af-4dbe-8391-b0c5eb6e3886","ModernWork","Tenant Root Group / Azure Landing Zones / Landing zones / Corp","Tenant Root Group","Corp","corp","keyvaults","Defender for Key Vault","PerTransaction","1","1","True","True","N/A","Azure",,,"0.25"
+"00e5137b-e743-4b43-b74f-25c2f258d841","Network Security","Tenant Root Group / Azure Landing Zones / Platform / Connectivity","Tenant Root Group","Connectivity","connectivity","virtualmachines","Defender for Servers","P2","9","9","True","False","N/A","Azure",,,"44.15"
+"00e5137b-e743-4b43-b74f-25c2f258d841","Network Security","Tenant Root Group / Azure Landing Zones / Platform / Connectivity","Tenant Root Group","Connectivity","connectivity","containers","Defender for Containers",,"4","4","True","False","N/A","Azure",,,"27.48"
+"34d58fcf-b44c-4c75-b18d-37a49e3018c9","Purview","Tenant Root Group / Azure Landing Zones / Landing zones / Corp","Tenant Root Group","Corp","corp","cloudposture","Defender for CSPM",,"6","6","True","False","N/A","Azure",,,"30.66"
+"4fc2c46b-4b55-49c7-9621-730e0a08c4aa","Cloud Security","Tenant Root Group / Azure Landing Zones / Landing zones / Online","Tenant Root Group","Online","online","serverless","Defender for CSPM",,"3","24","True","False","N/A","Azure",,,"15.33"
+"99005f96-e572-4035-b476-836fd9d83d64","Management","Tenant Root Group / Azure Landing Zones / Platform / Management","Tenant Root Group","Management","management","storageaccounts","Defender for Storage","DefenderForStorageV2","16","16","True","False","N/A","Azure",,,"156.51"
+"4fc2c46b-4b55-49c7-9621-730e0a08c4aa","Cloud Security","Tenant Root Group / Azure Landing Zones / Landing zones / Online","Tenant Root Group","Online","online","arm","Defender for Resource Manager","PerApiCall","1","1","True","True","N/A","Azure",,,"5.04"
+"00e5137b-e743-4b43-b74f-25c2f258d841","Network Security","Tenant Root Group / Azure Landing Zones / Platform / Connectivity","Tenant Root Group","Connectivity","connectivity","storageaccounts","Defender for Storage","DefenderForStorageV2","1","1","True","False","N/A","Azure",,,"9.78"
+"6c01b382-47d9-4fe1-a7cc-1568ce387e45","External ID","Tenant Root Group","Tenant Root Group","Tenant Root Group","0527ecb7-06fb-4769-b324-fd4a3bb865eb","serverless","Defender for CSPM",,"1","1","True","False","N/A","Azure",,,"5.11"
+"00e5137b-e743-4b43-b74f-25c2f258d841","Network Security","Tenant Root Group / Azure Landing Zones / Platform / Connectivity","Tenant Root Group","Connectivity","connectivity","keyvaults","Defender for Key Vault","PerTransaction","3","3","True","True","N/A","Azure",,,"0.74"
+"99005f96-e572-4035-b476-836fd9d83d64","Management","Tenant Root Group / Azure Landing Zones / Platform / Management","Tenant Root Group","Management","management","serverless","Defender for CSPM",,"1","1","True","False","N/A","Azure",,,"5.11"
+"4fc2c46b-4b55-49c7-9621-730e0a08c4aa","Cloud Security","Tenant Root Group / Azure Landing Zones / Landing zones / Online","Tenant Root Group","Online","online","serverlesscontainers","Defender for CSPM",,"3","6","True","False","N/A","Azure",,,"15.33"
+"4fc2c46b-4b55-49c7-9621-730e0a08c4aa","Cloud Security","Tenant Root Group / Azure Landing Zones / Landing zones / Online","Tenant Root Group","Online","online","keyvaults","Defender for Key Vault","PerTransaction","7","7","True","True","N/A","Azure",,,"1.74"
+"4fc2c46b-4b55-49c7-9621-730e0a08c4aa","Cloud Security","Tenant Root Group / Azure Landing Zones / Landing zones / Online","Tenant Root Group","Online","online","cloudposture","Defender for CSPM",,"63","63","True","False","N/A","Azure",,,"321.93"
+"09b43e75-fc00-4e20-b099-75be4b994d85","ASH Automation","Tenant Root Group","Tenant Root Group","Tenant Root Group","0527ecb7-06fb-4769-b324-fd4a3bb865eb","storageaccounts","Defender for Storage","DefenderForStorageV2","1","1","True","False","N/A","Azure",,,"9.78"
+"4fc2c46b-4b55-49c7-9621-730e0a08c4aa","Cloud Security","Tenant Root Group / Azure Landing Zones / Landing zones / Online","Tenant Root Group","Online","online","ai","Defender for AI services",,"21","21","True","False","N/A","Azure",,,"0.02"
+"4fc2c46b-4b55-49c7-9621-730e0a08c4aa","Cloud Security","Tenant Root Group / Azure Landing Zones / Landing zones / Online","Tenant Root Group","Online","online","virtualmachines","Defender for Servers","P2","13","13","True","False","N/A","Azure",,,"63.77"
+"4fc2c46b-4b55-49c7-9621-730e0a08c4aa","Cloud Security","Tenant Root Group / Azure Landing Zones / Landing zones / Online","Tenant Root Group","Online","online","appservices","Defender for App Service",,"14","14","True","False","N/A","Azure",,,"204.40"
+"4fc2c46b-4b55-49c7-9621-730e0a08c4aa","Cloud Security","Tenant Root Group / Azure Landing Zones / Landing zones / Online","Tenant Root Group","Online","online","cosmosdbs","Defender for Azure Cosmos DB",,"3","3","True","False","N/A","Azure",,,"2.63"
+"7de52e6d-d9af-4dbe-8391-b0c5eb6e3886","ModernWork","Tenant Root Group / Azure Landing Zones / Landing zones / Corp","Tenant Root Group","Corp","corp","virtualmachines","Defender for Servers","P2","7","7","True","False","N/A","Azure",,,"34.34"
+"34d58fcf-b44c-4c75-b18d-37a49e3018c9","Purview","Tenant Root Group / Azure Landing Zones / Landing zones / Corp","Tenant Root Group","Corp","corp","storageaccounts","Defender for Storage","DefenderForStorageV2","4","4","True","False","N/A","Azure",,,"39.13"
+"09b43e75-fc00-4e20-b099-75be4b994d85","ASH Automation","Tenant Root Group","Tenant Root Group","Tenant Root Group","0527ecb7-06fb-4769-b324-fd4a3bb865eb","appservices","Defender for App Service",,"1","1","True","False","N/A","Azure",,,"14.60"
+"6c01b382-47d9-4fe1-a7cc-1568ce387e45","External ID","Tenant Root Group","Tenant Root Group","Tenant Root Group","0527ecb7-06fb-4769-b324-fd4a3bb865eb","appservices","Defender for App Service",,"1","1","True","False","N/A","Azure",,,"14.60"
+"99005f96-e572-4035-b476-836fd9d83d64","Management","Tenant Root Group / Azure Landing Zones / Platform / Management","Tenant Root Group","Management","management","cloudposture","Defender for CSPM",,"49","49","True","False","N/A","Azure",,,"250.39"
+"4fc2c46b-4b55-49c7-9621-730e0a08c4aa","Cloud Security","Tenant Root Group / Azure Landing Zones / Landing zones / Online","Tenant Root Group","Online","online","sqlservervirtualmachines","Defender for SQL (Non Arc-enabled SQL Servers)",,"2","2","True","False","N/A","Azure",,,"21.90"
+"4fc2c46b-4b55-49c7-9621-730e0a08c4aa","Cloud Security","Tenant Root Group / Azure Landing Zones / Landing zones / Online","Tenant Root Group","Online","online","sqlservers","Defender for SQL",,"2","2","True","False","N/A","Azure",,,"30.00"
+"34d58fcf-b44c-4c75-b18d-37a49e3018c9","Purview","Tenant Root Group / Azure Landing Zones / Landing zones / Corp","Tenant Root Group","Corp","corp","sqlservers","Defender for SQL",,"2","2","True","False","N/A","Azure",,,"30.00"
+"34d58fcf-b44c-4c75-b18d-37a49e3018c9","Purview","Tenant Root Group / Azure Landing Zones / Landing zones / Corp","Tenant Root Group","Corp","corp","appservices","Defender for App Service",,"0","0","True","False","N/A","Azure",,,"0.00"
+"7de52e6d-d9af-4dbe-8391-b0c5eb6e3886","ModernWork","Tenant Root Group / Azure Landing Zones / Landing zones / Corp","Tenant Root Group","Corp","corp","arm","Defender for Resource Manager","PerApiCall","1","1","True","True","N/A","Azure",,,"5.04"
+"09b43e75-fc00-4e20-b099-75be4b994d85","ASH Automation","Tenant Root Group","Tenant Root Group","Tenant Root Group","0527ecb7-06fb-4769-b324-fd4a3bb865eb","keyvaults","Defender for Key Vault","PerTransaction","1","1","True","True","N/A","Azure",,,"0.25"
+"34d58fcf-b44c-4c75-b18d-37a49e3018c9","Purview","Tenant Root Group / Azure Landing Zones / Landing zones / Corp","Tenant Root Group","Corp","corp","serverless","Defender for CSPM",,"1","1","True","False","N/A","Azure",,,"5.11"
+"4fc2c46b-4b55-49c7-9621-730e0a08c4aa","Cloud Security","Tenant Root Group / Azure Landing Zones / Landing zones / Online","Tenant Root Group","Online","online","api","Defender for APIs","P1","2","2","True","False","N/A","Azure",,,"400.04"
+"4fc2c46b-4b55-49c7-9621-730e0a08c4aa","Cloud Security","Tenant Root Group / Azure Landing Zones / Landing zones / Online","Tenant Root Group","Online","online","storageaccounts","Defender for Storage","DefenderForStorageV2","24","24","True","False","N/A","Azure",,,"234.77"
+"4fc2c46b-4b55-49c7-9621-730e0a08c4aa","Cloud Security","Tenant Root Group / Azure Landing Zones / Landing zones / Online","Tenant Root Group","Online","online","containers","Defender for Containers",,"58","58","True","False","N/A","Azure",,,"398.42"
+"99005f96-e572-4035-b476-836fd9d83d64","Management","Tenant Root Group / Azure Landing Zones / Platform / Management","Tenant Root Group","Management","management","appservices","Defender for App Service",,"0","0","True","False","N/A","Azure",,,"0.00"
+"00e5137b-e743-4b43-b74f-25c2f258d841","Network Security","Tenant Root Group / Azure Landing Zones / Platform / Connectivity","Tenant Root Group","Connectivity","connectivity","cloudposture","Defender for CSPM",,"10","10","True","False","N/A","Azure",,,"51.10"
+"7de52e6d-d9af-4dbe-8391-b0c5eb6e3886","ModernWork","Tenant Root Group / Azure Landing Zones / Landing zones / Corp","Tenant Root Group","Corp","corp","cloudposture","Defender for CSPM",,"7","7","True","False","N/A","Azure",,,"35.77"
+"09b43e75-fc00-4e20-b099-75be4b994d85","ASH Automation","Tenant Root Group","Tenant Root Group","Tenant Root Group","0527ecb7-06fb-4769-b324-fd4a3bb865eb","serverless","Defender for CSPM",,"1","1","True","False","N/A","Azure",,,"5.11"
+"99005f96-e572-4035-b476-836fd9d83d64","Management","Tenant Root Group / Azure Landing Zones / Platform / Management","Tenant Root Group","Management","management","keyvaults","Defender for Key Vault","PerTransaction","8","8","True","True","N/A","Azure",,,"1.99"
+</script>
+
+<script>
+(function () {
+  "use strict";
+
+  // Plans whose sub-plan drives which meter is used to estimate cost.
+  const SUBPLAN_PLANS = new Set(["Defender for Servers", "Defender for APIs"]);
+  const CSPM_PLAN_NAME = "Defender for CSPM";
+  const CSPM_LABELS = { cloudposture: "Cloud Posture", serverless: "Serverless", serverlesscontainers: "Serverless Containers" };
+  const PRICING_URL = "https://azure.microsoft.com/en-us/pricing/details/defender-for-cloud/";
+  const NO_MG = "(No management group)";
+
+  const PAGES = {
+    overview: { title: "Overview", desc: "Estimated monthly plan costs across your Azure subscriptions." },
+    legacy: { title: "Deprecated Plans", desc: "Detailed breakdown of deprecated plans and their recommended migration targets." },
+    assignments: { title: "All Plan Assignments", desc: "Every plan assignment with full detail from the export." },
+    bysub: { title: "Plan by Subscription", desc: "Expand each plan to break its cost down by subscription." },
+    bymg: { title: "By Management Group", desc: "Estimated cost and coverage grouped by the management group hierarchy." },
+    pricing: { title: "Pricing Details", desc: "Meters used to derive list prices, and discount controls that update every estimate." }
+  };
+
+  // Meter catalog mirrored from the PowerShell cost-estimation script ($planMeterId mapping).
+  const METERS = [
+    { plan: "Defender for Servers", subPlan: "P1", meterId: "83f23551-9941-53f1-9088-2e6f2c2b17c3", unit: "1/Hour per server", basis: "unitPrice × 730", billable: "VMs + Arc machines (running)" },
+    { plan: "Defender for Servers", subPlan: "P2", meterId: "0fad698c-40bf-4ee1-a096-565fc6f0cddd", unit: "1/Hour per server", basis: "unitPrice × 730", billable: "VMs + Arc machines (running)" },
+    { plan: "Defender for App Service", subPlan: "", meterId: "3e7687bd-01e0-4342-bad7-7564cdc293db", unit: "1/Hour per instance", basis: "unitPrice × 730", billable: "App Service workers (non-consumption)" },
+    { plan: "Defender for CSPM", subPlan: "", meterId: "5c3a13cf-f401-5070-b805-5834ab6dcfd3", unit: "1/Hour per billable resource", basis: "unitPrice × 730", billable: "Posture resources; serverless 8:1; serverless containers 2:1" },
+    { plan: "Defender for Resource Manager", subPlan: "", meterId: "a562ee45-80fc-516b-a739-efe7123d59b5", unit: "1/Month per subscription", basis: "unitPrice", billable: "1 per subscription" },
+    { plan: "Defender for Containers", subPlan: "", meterId: "ea9a1d7f-4570-5e07-a2b1-e3c763714eae", unit: "1/Hour per vCore", basis: "unitPrice × 730", billable: "AKS + Arc cluster vCores (30-day avg)" },
+    { plan: "Defender for Key Vault", subPlan: "", meterId: "5ffd6fa6-59ab-5d33-87f0-8a65653d2257", unit: "1/Hour per vault", basis: "unitPrice × 730", billable: "Key vaults" },
+    { plan: "Defender for Open Source DBs", subPlan: "", meterId: "e52121e1-673c-42ec-ba6d-ba032f776ebb", unit: "1/Hour per server", basis: "unitPrice × 730", billable: "OSS DB servers (MySQL meter used for all)" },
+    { plan: "Defender for SQL", subPlan: "", meterId: "cb0969aa-aaaa-4d6c-ab4b-7e182fa06aff", unit: "1/Hour per server", basis: "unitPrice × 730", billable: "SQL servers / managed instances" },
+    { plan: "Defender for SQL (Non Arc-enabled SQL Servers)", subPlan: "", meterId: "125f3e29-294a-5bf3-bd79-cbe7cc987669", unit: "1/Hour per server", basis: "unitPrice × 730", billable: "SQL VMs / Arc SQL instances" },
+    { plan: "Defender for Storage", subPlan: "", meterId: "d168b937-9289-505b-bb69-9da28fab6264", unit: "1/Month per account", basis: "unitPrice", billable: "Storage accounts" },
+    { plan: "Defender for Storage", subPlan: "Malware Scanning", meterId: "794dfe11-3939-59f8-aa78-25f9b19ed7ed", unit: "per GB scanned", basis: "unitPrice × GB ingress", billable: "GB of blob ingress (30-day)" },
+    { plan: "Defender for Azure Cosmos DB", subPlan: "", meterId: "d1503658-0978-5996-a99d-4199fc85545e", unit: "1/Hour per 100 RU/s", basis: "unitPrice × 730", billable: "Avg RU/s over 30 days" },
+    { plan: "Defender for AI services", subPlan: "", meterId: "2dc983be-35b7-50dd-8cec-3d31f198019f", unit: "per resource", basis: "unitPrice", billable: "OpenAI / AI Services accounts" },
+    { plan: "Defender for APIs", subPlan: "P1", meterId: "ec3b0853-a3fa-5312-8425-f50fb1a33662", unit: "tiered by monthly calls", basis: "P1 tier", billable: "Monthly API requests (30-day)" },
+    { plan: "Defender for APIs", subPlan: "P2", meterId: "9d76fabc-1d5c-5208-8fbd-da65050e30a4", unit: "tiered by monthly calls", basis: "P2 tier", billable: "Monthly API requests (30-day)" },
+    { plan: "Defender for APIs", subPlan: "P3", meterId: "006be79b-30e2-5341-95b6-8c8bde9d7a04", unit: "tiered by monthly calls", basis: "P3 tier", billable: "Monthly API requests (30-day)" },
+    { plan: "Defender for APIs", subPlan: "P4", meterId: "de3493d9-ee03-5785-acf3-8d01b93a4a07", unit: "tiered by monthly calls", basis: "P4 tier", billable: "Monthly API requests (30-day)" },
+    { plan: "Defender for APIs", subPlan: "P5", meterId: "3b5e61ab-7f4d-5d88-8ad8-95fb9b2f1dfe", unit: "tiered by monthly calls", basis: "P5 tier", billable: "Monthly API requests (30-day)" }
+  ];
+
+  /* ---------- CSV parsing ---------- */
+  function parseCSV(text) {
+    text = String(text).replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
+    const rows = []; let i = 0, field = "", row = [], inQ = false;
+    while (i < text.length) {
+      const c = text[i];
+      if (inQ) {
+        if (c === '"') {
+          if (text[i + 1] === '"') { field += '"'; i += 2; continue; }
+          inQ = false; i++; continue;
+        }
+        field += c; i++; continue;
+      }
+      if (c === '"') { inQ = true; i++; continue; }
+      if (c === ",") { row.push(field); field = ""; i++; continue; }
+      if (c === "\n") { row.push(field); rows.push(row); field = ""; row = []; i++; continue; }
+      field += c; i++;
+    }
+    row.push(field); rows.push(row);
+    return rows.filter(r => r.length > 1 || (r.length === 1 && r[0].trim() !== ""));
+  }
+
+  function toObjects(rows) {
+    if (!rows.length) return [];
+    const head = rows[0].map(h => h.trim());
+    return rows.slice(1).map(r => {
+      const o = {};
+      head.forEach((h, idx) => { o[h] = (r[idx] !== undefined ? r[idx] : "").trim(); });
+      return o;
+    });
+  }
+
+  function normalize(records) {
+    return records.map(r => {
+      const cost = parseFloat(r.estimatedMonthlyCost);
+      const billable = parseFloat(r.BillableUnits);
+      const resources = parseFloat(r.ResourceCount);
+      const o = {
+        subId: r.SubscriptionID || "",
+        sub: r.SubscriptionName || "(unnamed)",
+        plan: r.Plan || "",
+        planName: r.PlanName || r.Plan || "",
+        subPlan: r.SubPlan || "",
+        billable: isNaN(billable) ? 0 : billable,
+        resources: isNaN(resources) ? 0 : resources,
+        enabled: String(r.PlanEnabled).toLowerCase() === "true",
+        legacy: String(r.LegacyPlan).toLowerCase() === "true",
+        newPlan: r.newPlan || "",
+        recommended: r.RecommendedSubPlan || "",
+        cost: isNaN(cost) ? 0 : cost,
+        mgPath: (r.ManagementGroupPath || "").trim() || NO_MG,
+        mgTop: (r.ManagementGroupTopLevel || "").trim() || "(None)",
+        mgParent: (r.ManagementGroupParent || "").trim() || "(None)"
+      };
+      o.planLabel = (SUBPLAN_PLANS.has(o.planName) && o.subPlan) ? (o.planName + " (" + o.subPlan + ")") : o.planName;
+      o.dcost = o.cost; // discounted cost, recomputed by recomputeCosts()
+      return o;
+    });
+  }
+
+  /* ---------- Formatting helpers ---------- */
+  const fmtMoney = n => "$" + (n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtNum = n => (n || 0).toLocaleString("en-US");
+  const fmtPct = n => { const v = Math.round((n || 0) * 100) / 100; return (v % 1 === 0 ? v.toFixed(0) : String(v)) + "%"; };
+  const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const setText = (id, t) => { const el = document.getElementById(id); if (el) el.textContent = t; };
+  const plural = (n, word) => n + " " + word + (n === 1 ? "" : "s");
+
+  const state = {
+    all: [],
+    page: "overview",
+    filters: { sub: "", plan: "", search: "", status: "all", mg: "" },
+    sort: {},
+    commitmentDiscount: 0,   // Azure Commitment Discount (%) — default for every plan
+    planDiscounts: {},       // per-planLabel override (%)
+    mgCollapsed: new Set(),  // collapsed management group tree node ids
+    mgPlansOpen: new Set(),  // tree node ids whose per-plan breakdown is expanded
+    planCatalog: []          // distinct Plan keys seen anywhere in the export = plans enableable per subscription
+  };
+
+  /* ---------- Discount engine ---------- */
+  function eff(planLabel) {
+    const o = state.planDiscounts[planLabel];
+    let d = (o === undefined || o === "" || isNaN(parseFloat(o))) ? state.commitmentDiscount : parseFloat(o);
+    if (isNaN(d)) d = 0;
+    return Math.min(100, Math.max(0, d));
+  }
+  function recomputeCosts() {
+    state.all.forEach(r => { r.dcost = r.cost * (1 - eff(r.planLabel) / 100); });
+  }
+  function anyDiscount() {
+    if (state.commitmentDiscount > 0) return true;
+    return Object.keys(state.planDiscounts).some(k => parseFloat(state.planDiscounts[k]) > 0);
+  }
+  function moneyCell(retail, disc) {
+    if (retail === undefined) retail = disc;
+    if (Math.abs(retail - disc) < 0.005) return `<span class="money">${fmtMoney(disc)}</span>`;
+    return `<span class="money" title="Retail before discount: ${fmtMoney(retail)}">${fmtMoney(disc)}</span>`;
+  }
+
+  const mgSegments = path => (path && path !== NO_MG) ? path.split(" / ") : [NO_MG];
+
+  function applyFilters() {
+    const f = state.filters;
+    const q = f.search.toLowerCase();    return state.all.filter(r => {
+      if (f.sub && r.sub !== f.sub) return false;
+      if (f.plan && r.planLabel !== f.plan) return false;
+      if (f.status === "enabled" && !r.enabled) return false;
+      if (f.status === "disabled" && r.enabled) return false;
+      if (f.status === "legacy" && !r.legacy) return false;
+      if (f.mg && !mgSegments(r.mgPath).includes(f.mg)) return false;
+      if (q) {
+        const hay = [r.sub, r.plan, r.planName, r.planLabel, r.subPlan, r.newPlan, r.recommended, r.mgPath, r.mgTop].join(" ").toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }
+
+  function groupBy(arr, keyFn) {
+    const m = new Map();
+    arr.forEach(x => { const k = keyFn(x); if (!m.has(k)) m.set(k, []); m.get(k).push(x); });
+    return m;
+  }
+  const sum = (arr, f) => arr.reduce((a, x) => a + f(x), 0);
+
+  /* ---------- Shared building blocks ---------- */
+  function kpiRow(cards) {
+    return `<section class="kpis">` + cards.map(c =>
+      `<div class="kpi${c.hero ? " hero" : ""}">
+        <div class="label">${esc(c.label)}</div>
+        <div class="value">${esc(c.value)}</div>
+        <div class="sub">${esc(c.sub || "")}</div>
+      </div>`).join("") + `</section>`;
+  }
+
+  // Resources covered (enabled plans) vs. not covered (disabled plans).
+  function resourceCard(rows) {
+    const covered = sum(rows.filter(r => r.enabled), r => r.resources);
+    const notCovered = sum(rows.filter(r => !r.enabled), r => r.resources);
+    return {
+      label: "Resources Covered",
+      value: fmtNum(covered),
+      sub: (notCovered ? fmtNum(notCovered) + " not covered · " : "") + fmtNum(sum(rows, r => r.billable)) + " billable units"
+    };
+  }
+
+  function overviewKpis(rows) {
+    const totalCost = sum(rows, r => r.dcost);
+    const subs = new Set(rows.map(r => r.subId || r.sub)).size;
+    const enabled = rows.filter(r => r.enabled).length;
+    const disabled = rows.filter(r => !r.enabled).length;
+    const legacy = rows.filter(r => r.legacy && r.enabled).length;
+    return [
+      { hero: true, label: "Estimated Monthly Cost", value: fmtMoney(totalCost), sub: fmtMoney(totalCost * 12) + " / year" + (anyDiscount() ? " · after discount" : "") },
+      { label: "Subscriptions", value: fmtNum(subs), sub: plural(rows.length, "plan assignment") },
+      resourceCard(rows),
+      { label: "Plans Enabled", value: fmtNum(enabled), sub: disabled + " not enabled" },
+      { label: "Deprecated Plans (enabled)", value: fmtNum(legacy), sub: "candidates to migrate" }
+    ];
+  }
+
+  function planCell(r) {
+    if (SUBPLAN_PLANS.has(r.planName) && r.subPlan) return esc(r.planName) + ` <span class="badge sub">${esc(r.subPlan)}</span>`;
+    return esc(r.planName);
+  }
+
+  // Tooltip text describing the Defender for CSPM billable breakdown by Plan column type.
+  function cspmTooltip(scopeRows) {
+    const c = (scopeRows || state.all).filter(r => r.planName === CSPM_PLAN_NAME);
+    const byType = {};
+    c.forEach(r => { const k = r.plan || "cloudposture"; (byType[k] = byType[k] || { res: 0, bill: 0 }); byType[k].res += r.resources; byType[k].bill += r.billable; });
+    const desc = {
+      cloudposture: "Resource types: VMs, VM scale sets, storage accounts, SQL, Key Vault, App Service, open-source DBs, Cosmos DB and more — agentless posture across Azure, AWS & GCP.",
+      serverless: "8 functions and/or web apps = 1 billable resource. Applicable: Azure Web Apps, Azure Functions, AWS Lambda.",
+      serverlesscontainers: "2 running serverless containers = 1 billable resource. Applicable: Azure Container Apps (ACA), Azure Container Instances (ACI), Amazon ECS on AWS Fargate."
+    };
+    const lines = ["Defender for CSPM — billable breakdown by plan type:", ""];
+    ["cloudposture", "serverless", "serverlesscontainers"].forEach(k => {
+      if (!byType[k]) return;
+      lines.push(`• ${CSPM_LABELS[k] || k} (${k}): ${fmtNum(byType[k].res)} resources, ${fmtNum(byType[k].bill)} billable units`);
+      lines.push(`    ${desc[k]}`);
+    });
+    return lines.join("\n");
+  }
+
+  // Renders a plan name, adding the CSPM hover breakdown when it is the CSPM plan.
+  function cspmName(text, scopeRows) {
+    if (text === CSPM_PLAN_NAME) return `<span class="cspm-info" title="${esc(cspmTooltip(scopeRows))}">${esc(text)}</span>`;
+    return esc(text);
+  }
+
+  function barChart(title, entries, valueFmt) {
+    const max = Math.max(1, ...entries.map(e => e.value));
+    const rows = entries.map(e => `<div class="bar-row">
+        <span class="name" title="${esc(e.title || e.name)}">${esc(e.name)}</span>
+        <div class="bar-track"><div class="bar-fill" style="width:${((e.value / max) * 100).toFixed(1)}%"></div></div>
+        <span class="val">${valueFmt(e.value)}</span>
+      </div>`).join("");
+    return `<div class="panel"><h2>${esc(title)} <span class="count">${entries.length}</span></h2>
+      <div class="bars">${rows || '<div class="muted">No data</div>'}</div></div>`;
+  }
+
+  function noRowsRow(colCount, msg) {
+    return `<tr><td colspan="${colCount}" class="muted" style="padding:28px;text-align:center">${esc(msg || "No matching rows")}</td></tr>`;
+  }
+
+  function sortableTable(id, columns, data, footer) {
+    const s = state.sort[id] || (state.sort[id] = { key: columns[0].key, dir: 1 });
+    const col = columns.find(c => c.key === s.key) || columns[0];
+    const sorted = data.slice().sort((a, b) => {
+      let av = col.sortVal ? col.sortVal(a) : a[col.key];
+      let bv = col.sortVal ? col.sortVal(b) : b[col.key];
+      if (typeof av === "string") { av = av.toLowerCase(); bv = String(bv).toLowerCase(); }
+      if (av < bv) return -1 * s.dir;
+      if (av > bv) return 1 * s.dir;
+      return 0;
+    });
+    const head = columns.map(c => {
+      const isSorted = c.key === s.key;
+      const ariaSort = isSorted ? (s.dir === 1 ? "ascending" : "descending") : "none";
+      return `<th class="${c.num ? "num" : ""}${isSorted ? " sorted" : ""}" data-key="${c.key}" aria-sort="${ariaSort}" title="Sort by ${esc(c.title)}">
+        ${esc(c.title)}<span class="arrow">${isSorted ? (s.dir === 1 ? "▲" : "▼") : "↕"}</span>
+      </th>`;
+    }).join("");
+    const body = sorted.map(r =>
+      "<tr>" + columns.map(c => `<td class="${c.num ? "num" : ""}">${c.render(r)}</td>`).join("") + "</tr>"
+    ).join("");
+    const foot = footer ? `<tfoot><tr>${footer(sorted).map((v, idx) =>
+      `<td class="${columns[idx].num ? "num" : ""}">${v}</td>`).join("")}</tr></tfoot>` : "";
+    return `<table data-tid="${id}">
+      <thead><tr>${head}</tr></thead>
+      <tbody>${body || noRowsRow(columns.length)}</tbody>
+      ${foot}</table>`;
+  }
+
+  function staticTable(columns, data, footer) {
+    const head = columns.map(c => `<th class="${c.num ? "num" : ""}">${esc(c.title)}</th>`).join("");
+    const body = data.map(r => "<tr>" + columns.map(c => `<td class="${c.num ? "num" : ""}">${c.render(r)}</td>`).join("") + "</tr>").join("");
+    const foot = (footer && data.length) ? `<tfoot><tr>${footer.map((v, i) => `<td class="${columns[i].num ? "num" : ""}">${v}</td>`).join("")}</tr></tfoot>` : "";
+    return `<table><thead><tr>${head}</tr></thead>
+      <tbody>${body || noRowsRow(columns.length)}</tbody>${foot}</table>`;
+  }
+
+  /* ---------- Aggregations (cost = discounted, retail = list) ---------- */
+  function aggBySub(rows) {
+    return Array.from(groupBy(rows, r => r.sub), ([name, arr]) => ({
+      name, subId: arr[0].subId, cost: sum(arr, r => r.dcost), retail: sum(arr, r => r.cost),
+      resources: sum(arr, r => r.resources), billable: sum(arr, r => r.billable), plans: arr.length,
+      enabledPlans: arr.filter(r => r.enabled).length, disabledPlans: arr.filter(r => !r.enabled).length
+    })).sort((a, b) => b.cost - a.cost);
+  }
+
+  function aggByPlan(rows) {
+    return Array.from(groupBy(rows, r => r.planLabel), ([name, arr]) => ({
+      name, plan: arr[0].plan, planName: arr[0].planName, subPlan: arr[0].subPlan,
+      cost: sum(arr, r => r.dcost), retail: sum(arr, r => r.cost),
+      resources: sum(arr, r => r.resources), billable: sum(arr, r => r.billable),
+      subs: new Set(arr.map(r => r.sub)).size
+    })).sort((a, b) => b.cost - a.cost);
+  }
+
+  function aggByMg(rows, keyFn) {
+    return Array.from(groupBy(rows, keyFn), ([name, arr]) => ({
+      name, cost: sum(arr, r => r.dcost), retail: sum(arr, r => r.cost),
+      resources: sum(arr, r => r.resources), billable: sum(arr, r => r.billable),
+      subs: new Set(arr.map(r => r.sub)).size, plans: arr.length,
+      enabledPlans: arr.filter(r => r.enabled).length, disabledPlans: arr.filter(r => !r.enabled).length
+    })).sort((a, b) => b.cost - a.cost);
+  }
+
+  /* ---------- Reusable panels ---------- */
+  function buildSubTable(rows) {
+    const bySub = aggBySub(rows);
+    return `<div class="panel"><h2>Breakdown by Subscription <span class="count">${bySub.length}</span></h2>
+      <div class="tbl-scroll">` +
+      sortableTable("subs", [
+        { key: "name", title: "Subscription", render: r => esc(r.name) },
+        { key: "plans", title: "Plans", num: true, render: r => fmtNum(r.plans) },
+        { key: "resources", title: "Resources", num: true, render: r => fmtNum(r.resources) },
+        { key: "billable", title: "Billable Units", num: true, render: r => fmtNum(r.billable) },
+        { key: "cost", title: "Monthly Cost", num: true, render: r => moneyCell(r.retail, r.cost) }
+      ], bySub, sorted => ["Total", fmtNum(sum(sorted, r => r.plans)), fmtNum(sum(sorted, r => r.resources)),
+        fmtNum(sum(sorted, r => r.billable)), moneyCell(sum(sorted, r => r.retail), sum(sorted, r => r.cost))]) +
+      "</div></div>";
+  }
+
+  function buildMgTable(rows) {
+    const byMg = aggByMg(rows, r => r.mgPath || NO_MG);
+    return `<div class="panel"><h2>Breakdown by Management Group <span class="count">${byMg.length}</span></h2>
+      <div class="section-note">Grouped by the full management group path of each subscription; costs are not rolled up into parent groups. Use the <a href="#" data-nav="bymg">By Management Group</a> page for the hierarchy and plan coverage.</div>
+      <div class="tbl-scroll">` +
+      sortableTable("mgs", [
+        { key: "name", title: "Management Group", render: r => esc(r.name) },
+        { key: "subs", title: "Subscriptions", num: true, render: r => fmtNum(r.subs) },
+        { key: "plans", title: "Plans", num: true, render: r => fmtNum(r.plans) },
+        { key: "resources", title: "Resources", num: true, render: r => fmtNum(r.resources) },
+        { key: "billable", title: "Billable Units", num: true, render: r => fmtNum(r.billable) },
+        { key: "cost", title: "Monthly Cost", num: true, render: r => moneyCell(r.retail, r.cost) }
+      ], byMg, sorted => ["Total", fmtNum(sum(sorted, r => r.subs)), fmtNum(sum(sorted, r => r.plans)),
+        fmtNum(sum(sorted, r => r.resources)), fmtNum(sum(sorted, r => r.billable)),
+        moneyCell(sum(sorted, r => r.retail), sum(sorted, r => r.cost))]) +
+      "</div></div>";
+  }
+
+  function buildPlanTable(rows) {
+    const byPlan = aggByPlan(rows);
+    return `<div class="panel"><h2>Breakdown by Plan <span class="count">${byPlan.length}</span></h2>
+      <div class="section-note">Defender for Servers and Defender for APIs are listed per <b>sub-plan</b> — the sub-plan determines the meter used to derive the monthly cost.</div>
+      <div class="tbl-scroll">` +
+      sortableTable("plans", [
+        { key: "planName", title: "Plan", render: r => cspmName(r.planName, rows) },
+        { key: "subPlan", title: "Sub-plan", render: r => r.subPlan ? `<span class="badge sub">${esc(r.subPlan)}</span>` : '<span class="muted">—</span>' },
+        { key: "subs", title: "Subscriptions", num: true, render: r => fmtNum(r.subs) },
+        { key: "resources", title: "Resources", num: true, render: r => fmtNum(r.resources) },
+        { key: "billable", title: "Billable Units", num: true, render: r => fmtNum(r.billable) },
+        { key: "cost", title: "Monthly Cost", num: true, render: r => moneyCell(r.retail, r.cost) }
+      ], byPlan, sorted => ["Total", "", fmtNum(sum(sorted, r => r.subs)), fmtNum(sum(sorted, r => r.resources)),
+        fmtNum(sum(sorted, r => r.billable)), moneyCell(sum(sorted, r => r.retail), sum(sorted, r => r.cost))]) +
+      "</div></div>";
+  }
+
+  function buildStatusPanel(rows) {
+    const enabledRows = rows.filter(r => r.enabled);
+    const disabledRows = rows.filter(r => !r.enabled);
+    const en = { n: enabledRows.length, cost: sum(enabledRows, r => r.dcost) };
+    const di = { n: disabledRows.length, res: sum(disabledRows, r => r.resources) };
+    const total = Math.max(1, en.n + di.n);
+    const planStatus = Array.from(groupBy(rows, r => r.planLabel), ([name, arr]) => ({
+      name, enabled: arr.filter(r => r.enabled).length, disabled: arr.filter(r => !r.enabled).length,
+      cost: sum(arr.filter(r => r.enabled), r => r.dcost), retail: sum(arr.filter(r => r.enabled), r => r.cost)
+    })).sort((a, b) => b.cost - a.cost);
+    return `<div class="panel"><h2>Plans Enabled vs. Not Enabled</h2>
+      <div class="bars">
+        <div class="bar-row">
+          <span class="name"><span class="badge on">Enabled</span></span>
+          <div class="bar-track"><div class="bar-fill" style="width:${(en.n / total * 100).toFixed(1)}%;background:linear-gradient(90deg,#0e6b3d,#3fb27a)"></div></div>
+          <span class="val">${en.n} · ${fmtMoney(en.cost)}</span>
+        </div>
+        <div class="bar-row">
+          <span class="name"><span class="badge off">Not enabled</span></span>
+          <div class="bar-track"><div class="bar-fill" style="width:${(di.n / total * 100).toFixed(1)}%;background:linear-gradient(90deg,#b3261e,#e8735f)"></div></div>
+          <span class="val">${di.n} · ${fmtNum(di.res)} res</span>
+        </div>
+      </div>
+      <div class="tbl-scroll">` +
+      sortableTable("status", [
+        { key: "name", title: "Plan", render: r => esc(r.name) },
+        { key: "enabled", title: "Enabled", num: true, render: r => r.enabled ? `<span class="badge on">${r.enabled}</span>` : '<span class="muted">0</span>' },
+        { key: "disabled", title: "Not Enabled", num: true, render: r => r.disabled ? `<span class="badge off">${r.disabled}</span>` : '<span class="muted">0</span>' },
+        { key: "cost", title: "Enabled Cost", num: true, render: r => moneyCell(r.retail, r.cost) }
+      ], planStatus) +
+      "</div></div>";
+  }
+
+  // Enablement is always measured against every subscription in the export, not the filtered view.
+  function buildEnabledPctPanel() {
+    const src = state.all;
+    const totalSubs = new Set(src.map(r => r.sub)).size;
+    if (!totalSubs) return "";
+    const byPlan = Array.from(groupBy(src, r => r.planLabel), ([name, arr]) => {
+      const enabledSubs = new Set(arr.filter(r => r.enabled).map(r => r.sub)).size;
+      return {
+        name, planName: arr[0].planName, enabledSubs,
+        pct: enabledSubs / totalSubs * 100,
+        resCovered: sum(arr.filter(r => r.enabled), r => r.resources),
+        resNotCovered: sum(arr.filter(r => !r.enabled), r => r.resources)
+      };
+    }).sort((a, b) => b.pct - a.pct || a.name.localeCompare(b.name));
+    const activePlan = state.filters.plan;
+    const bars = byPlan.map(p => {
+      const nameHtml = p.planName === CSPM_PLAN_NAME ? cspmName(p.planName, src) : esc(p.name);
+      const notCovered = p.resNotCovered ? ` · <span style="color:var(--bad)">${fmtNum(p.resNotCovered)} not covered</span>` : "";
+      return `<div class="bar-row enable-bar${activePlan === p.name ? " active" : ""}" data-plan="${esc(p.name)}" role="button" tabindex="0" title="Click to filter the rest of the page by ${esc(p.name)}">
+        <span class="name">${nameHtml}</span>
+        <div class="bar-track"><div class="bar-fill" style="width:${p.pct.toFixed(1)}%;background:linear-gradient(90deg,#0e6b3d,#3fb27a)"></div></div>
+        <span class="val"><b>${Math.round(p.pct)}%</b> <span class="muted">(${p.enabledSubs}/${totalSubs})</span> · <span style="color:var(--good)">${fmtNum(p.resCovered)} covered</span>${notCovered}</span>
+      </div>`;
+    }).join("");
+    return `<div class="panel"><h2>Plan Enablement — % of Subscriptions <span class="count">${byPlan.length}</span></h2>
+      <div class="section-note">Percentage of all ${plural(totalSubs, "subscription")} with the plan enabled (from the <b>PlanEnabled</b> column). Resource counts show associated resources <b>covered</b> vs. <b>not covered</b> when a plan is disabled. Select a bar to filter the rest of the page.</div>
+      <div class="bars">${bars || '<div class="muted">No data</div>'}</div></div>`;
+  }
+
+  function buildCspmPanel(rows) {
+    const c = rows.filter(r => r.planName === CSPM_PLAN_NAME);
+    if (!c.length) return "";
+    const byType = Array.from(groupBy(c, r => r.plan), ([plan, arr]) => ({
+      plan, label: CSPM_LABELS[plan] || plan, cost: sum(arr, r => r.dcost), retail: sum(arr, r => r.cost),
+      resources: sum(arr, r => r.resources), billable: sum(arr, r => r.billable), subs: new Set(arr.map(r => r.sub)).size
+    })).sort((a, b) => b.cost - a.cost);
+    return `<div class="panel"><h2><span class="cspm-info" title="${esc(cspmTooltip(rows))}">Defender for CSPM</span> — Breakdown by Plan Type <span class="count">${byType.length}</span></h2>
+      <div class="section-note">Defender for CSPM aggregates several billing types from the export's <b>Plan</b> column (cloudposture, serverless, serverlesscontainers).</div>
+      <div class="tbl-scroll">` +
+      sortableTable("cspm", [
+        { key: "label", title: "Plan Type", render: r => esc(r.label) + ` <span class="muted">(${esc(r.plan)})</span>` },
+        { key: "subs", title: "Subscriptions", num: true, render: r => fmtNum(r.subs) },
+        { key: "resources", title: "Resources", num: true, render: r => fmtNum(r.resources) },
+        { key: "billable", title: "Billable Units", num: true, render: r => fmtNum(r.billable) },
+        { key: "cost", title: "Monthly Cost", num: true, render: r => moneyCell(r.retail, r.cost) }
+      ], byType, sorted => ["Total", fmtNum(sum(sorted, r => r.subs)), fmtNum(sum(sorted, r => r.resources)),
+        fmtNum(sum(sorted, r => r.billable)), moneyCell(sum(sorted, r => r.retail), sum(sorted, r => r.cost))]) +
+      "</div></div>";
+  }
+
+  /* ---------- Pages ---------- */
+  function pageOverview(rows) {
+    const bySub = aggBySub(rows);
+    const byPlan = aggByPlan(rows);
+    const chartSub = barChart("Cost by Subscription", bySub.slice(0, 15).map(x => ({ name: x.name, value: x.cost })), fmtMoney);
+    const chartPlan = barChart("Cost by Plan (sub-plan aware)", byPlan.slice(0, 15).map(x => ({
+      name: x.name, value: x.cost, title: x.planName === CSPM_PLAN_NAME ? cspmTooltip(rows) : x.name
+    })), fmtMoney);
+    return kpiRow(overviewKpis(rows)) +
+      `<div class="grid-2">${chartSub}${chartPlan}</div>` +
+      buildMgTable(rows) + buildSubTable(rows) + buildPlanTable(rows) + buildCspmPanel(rows) + buildStatusPanel(rows) + buildEnabledPctPanel();
+  }
+
+  function calloutPanel(icon, title, bullets, linkText, linkUrl) {
+    return `<div class="panel callout"><h2>${icon} ${esc(title)}</h2>
+      <div class="calc"><ul>${bullets.map(b => `<li>${b}</li>`).join("")}</ul>
+      <p><a href="${linkUrl}" target="_blank" rel="noopener">${esc(linkText)} ↗</a></p></div></div>`;
+  }
+
+  // Contextual migration callouts for deprecated plans that are being replaced.
+  function legacyContext(L) {
+    let html = "";
+    if (L.some(r => r.planName === "Defender for Storage")) {
+      html += calloutPanel("🗄️", "Defender for Storage (classic) — migrate to the new plan", [
+        "Classic uses deprecated <b>per-transaction</b> / per-storage-account pricing. The <b>new plan</b> bills a predictable price <b>per storage account</b>, and adds optional malware scanning and sensitive-data threat detection.",
+        "After <b>February 5, 2025</b> the classic per-transaction plan can no longer be newly enabled — only subscriptions that already have it may keep it.",
+        "The <b>estimated monthly cost shown here reflects the new Defender for Storage plan</b> (per storage account) meter, not classic per-transaction pricing."
+      ], "Migrate from Defender for Storage (classic)", "https://learn.microsoft.com/en-us/azure/defender-for-cloud/defender-for-storage-classic-migrate");
+    }
+    if (L.some(r => /dns/i.test(r.planName))) {
+      html += calloutPanel("🌐", "Defender for DNS — now part of Defender for Servers Plan 2", [
+        "As of <b>August 1, 2023</b>, Defender for DNS is no longer a standalone plan for new subscriptions — DNS threat alerts are included in <b>Defender for Servers Plan 2 (P2)</b>. Existing standalone subscriptions can continue to use it.",
+        "The protection scope is unchanged; only how DNS protection is <b>billed and bundled</b> changes.",
+        "The <b>estimated monthly cost shown here reflects the replacement Defender for Servers P2</b> meter."
+      ], "Microsoft Defender for DNS", "https://learn.microsoft.com/en-us/azure/defender-for-cloud/defender-for-dns-introduction");
+    }
+    if (L.some(r => /kubernetes|container registry/i.test(r.planName))) {
+      html += calloutPanel("🐳", "Defender for Kubernetes / Container Registry — replaced by Defender for Containers", [
+        "Defender for Kubernetes and Defender for Container Registry are <b>deprecated</b> and unified into <b>Defender for Containers</b>, which adds agentless Kubernetes discovery, run-time threat protection, and registry/image vulnerability assessment.",
+        "The <b>estimated monthly cost shown here reflects the Defender for Containers</b> plan, billed per vCore."
+      ], "Introduction to Microsoft Defender for Containers", "https://learn.microsoft.com/en-us/azure/defender-for-cloud/defender-for-containers-introduction");
+    }
+    return html;
+  }
+
+  function pageLegacy(rows) {
+    const L = rows.filter(r => r.legacy);
+    const enabledL = L.filter(r => r.enabled);
+    const kpis = kpiRow([
+      { hero: true, label: "Deprecated Monthly Cost", value: fmtMoney(sum(L, r => r.dcost)), sub: enabledL.length + " enabled deprecated plans" },
+      { label: "Deprecated Plan Assignments", value: fmtNum(L.length), sub: plural(new Set(L.map(r => r.sub)).size, "subscription") },
+      { label: "Resources on Deprecated", value: fmtNum(sum(L, r => r.resources)), sub: fmtNum(sum(L, r => r.billable)) + " billable units" },
+      { label: "Have Migration Target", value: fmtNum(L.filter(r => r.newPlan && r.newPlan !== "N/A").length), sub: "of " + L.length + " deprecated plans" }
+    ]);
+    if (!L.length) return kpis + '<div class="panel"><div class="empty">No deprecated plans in the current view. 🎉</div></div>';
+    const byPlan = aggByPlan(L);
+    const chart = barChart("Deprecated Cost by Plan", byPlan.slice(0, 15).map(x => ({ name: x.name, value: x.cost })), fmtMoney);
+    const detail = `<div class="panel"><h2>Deprecated Plan Detail <span class="count">${L.length}</span></h2>
+      <div class="section-note">Deprecated plans are billed under older meters. For plans that are being replaced (DNS, Kubernetes, Container Registry, Storage classic), the <b>Est. Monthly Cost is calculated using the new / replacement plan's meter</b> shown in the <b>New / Target Plan</b> column — see the migration notes above.</div>
+      <div class="tbl-wide">` +
+      sortableTable("legacyDetail", [
+        { key: "sub", title: "Subscription", render: r => esc(r.sub) },
+        { key: "planName", title: "Current Plan", render: r => `<span class="badge legacy">${esc(r.planName)}</span>` },
+        { key: "subPlan", title: "Sub-plan", render: r => r.subPlan ? `<span class="badge sub">${esc(r.subPlan)}</span>` : '<span class="muted">—</span>' },
+        { key: "resources", title: "Resources", num: true, render: r => fmtNum(r.resources) },
+        { key: "billable", title: "Billable", num: true, render: r => fmtNum(r.billable) },
+        { key: "enabled", title: "Status", render: r => r.enabled ? '<span class="badge on">Enabled</span>' : '<span class="badge off">Not enabled</span>' },
+        { key: "newPlan", title: "New / Target Plan", render: r => (r.newPlan && r.newPlan !== "N/A") ? `<span class="badge plan">${esc(r.newPlan)}</span>` : '<span class="muted">Not specified</span>' },
+        { key: "recommended", title: "Recommended Sub-plan", render: r => r.recommended ? esc(r.recommended) : '<span class="muted">—</span>' },
+        { key: "cost", title: "Est. Monthly Cost", num: true, render: r => moneyCell(r.cost, r.dcost) + ((r.newPlan && r.newPlan !== "N/A") ? ` <span class="badge newplan" title="Estimated using the ${esc(r.newPlan)} meter">new plan</span>` : "") }
+      ], L, sorted => ["Total", "", "", fmtNum(sum(sorted, r => r.resources)), fmtNum(sum(sorted, r => r.billable)),
+        "", "", "", moneyCell(sum(sorted, r => r.cost), sum(sorted, r => r.dcost))]) +
+      "</div></div>";
+    const byPlanTable = `<div class="panel"><h2>Deprecated Summary by Plan <span class="count">${byPlan.length}</span></h2>
+      <div class="tbl-scroll">` +
+      sortableTable("legacyByPlan", [
+        { key: "name", title: "Plan", render: r => esc(r.name) },
+        { key: "subs", title: "Subscriptions", num: true, render: r => fmtNum(r.subs) },
+        { key: "resources", title: "Resources", num: true, render: r => fmtNum(r.resources) },
+        { key: "cost", title: "Monthly Cost", num: true, render: r => moneyCell(r.retail, r.cost) }
+      ], byPlan, sorted => ["Total", fmtNum(sum(sorted, r => r.subs)), fmtNum(sum(sorted, r => r.resources)),
+        moneyCell(sum(sorted, r => r.retail), sum(sorted, r => r.cost))]) +
+      "</div></div>";
+    return kpis + legacyContext(L) + chart + detail + byPlanTable;
+  }
+
+  function pageAssignments(rows) {
+    const detail = `<div class="panel"><h2>All Plan Assignments <span class="count">${rows.length}</span></h2>
+      <div class="section-note">Full detail from the export. Defender for Servers / APIs display their sub-plan — that sub-plan determines the meter used for the estimate.</div>
+      <div class="tbl-wide">` +
+      sortableTable("assign", [
+        { key: "sub", title: "Subscription", render: r => esc(r.sub) },
+        { key: "plan", title: "Plan (raw)", render: r => `<span class="muted">${esc(r.plan)}</span>` },
+        { key: "planName", title: "Plan", render: r => r.planName === CSPM_PLAN_NAME ? cspmName(r.planName, rows) : planCell(r) },
+        { key: "subPlan", title: "Sub-plan", render: r => r.subPlan ? `<span class="badge sub">${esc(r.subPlan)}</span>` : '<span class="muted">—</span>' },
+        { key: "resources", title: "Resources", num: true, render: r => fmtNum(r.resources) },
+        { key: "billable", title: "Billable", num: true, render: r => fmtNum(r.billable) },
+        { key: "enabled", title: "Enabled", render: r => r.enabled ? '<span class="badge on">Yes</span>' : '<span class="badge off">No</span>' },
+        { key: "legacy", title: "Deprecated", render: r => r.legacy ? '<span class="badge legacy">Deprecated</span>' : '<span class="muted">—</span>' },
+        { key: "newPlan", title: "New / Target", render: r => (r.newPlan && r.newPlan !== "N/A") ? `<span class="badge plan">${esc(r.newPlan)}</span>` : '<span class="muted">—</span>' },
+        { key: "recommended", title: "Recommended", render: r => r.recommended ? esc(r.recommended) : '<span class="muted">—</span>' },
+        { key: "cost", title: "Monthly Cost", num: true, render: r => moneyCell(r.cost, r.dcost) }
+      ], rows, sorted => ["Total", "", "", "", fmtNum(sum(sorted, r => r.resources)), fmtNum(sum(sorted, r => r.billable)),
+        "", "", "", "", moneyCell(sum(sorted, r => r.cost), sum(sorted, r => r.dcost))]) +
+      "</div></div>";
+    return kpiRow(overviewKpis(rows)) + buildEnabledPctPanel() + detail;
+  }
+
+  function pageBySub(rows) {
+    const byPlan = aggByPlan(rows);
+    const kpis = kpiRow([
+      { hero: true, label: "Total Monthly Cost", value: fmtMoney(sum(rows, r => r.dcost)), sub: plural(byPlan.length, "plan") },
+      { label: "Subscriptions", value: fmtNum(new Set(rows.map(r => r.sub)).size), sub: plural(rows.length, "assignment") },
+      resourceCard(rows)
+    ]);
+    if (!rows.length) return kpis + '<div class="panel"><div class="empty">No data in the current view.</div></div>';
+    const accs = byPlan.map(p => {
+      const planRows = rows.filter(r => r.planLabel === p.name);
+      const subRows = aggBySub(planRows);
+      const subTable = staticTable([
+        { title: "Subscription", render: r => esc(r.name) },
+        { title: "Resources", num: true, render: r => fmtNum(r.resources) },
+        { title: "Billable", num: true, render: r => fmtNum(r.billable) },
+        { title: "Monthly Cost", num: true, render: r => moneyCell(r.retail, r.cost) }
+      ], subRows, ["Total", fmtNum(sum(subRows, r => r.resources)), fmtNum(sum(subRows, r => r.billable)),
+        moneyCell(sum(subRows, r => r.retail), sum(subRows, r => r.cost))]);
+      let cspmBlock = "";
+      if (p.planName === CSPM_PLAN_NAME) {
+        const byType = Array.from(groupBy(planRows, r => r.plan), ([plan, arr]) => ({
+          plan, label: CSPM_LABELS[plan] || plan, cost: sum(arr, r => r.dcost), retail: sum(arr, r => r.cost),
+          resources: sum(arr, r => r.resources), subs: new Set(arr.map(r => r.sub)).size
+        })).sort((a, b) => b.cost - a.cost);
+        cspmBlock = `<div class="subhead">CSPM breakdown by plan type (export Plan column)</div>` +
+          staticTable([
+            { title: "Plan Type", render: r => esc(r.label) + ` <span class="muted">(${esc(r.plan)})</span>` },
+            { title: "Subscriptions", num: true, render: r => fmtNum(r.subs) },
+            { title: "Resources", num: true, render: r => fmtNum(r.resources) },
+            { title: "Monthly Cost", num: true, render: r => moneyCell(r.retail, r.cost) }
+          ], byType, ["Total", fmtNum(sum(byType, r => r.subs)), fmtNum(sum(byType, r => r.resources)),
+            moneyCell(sum(byType, r => r.retail), sum(byType, r => r.cost))]);
+      }
+      const subPlanNote = p.subPlan ? ` <span class="badge sub">${esc(p.subPlan)}</span>` : "";
+      return `<details class="acc">
+        <summary>
+          <span class="sumname"><span class="caret">▸</span>${cspmName(p.planName, rows)}${subPlanNote}</span>
+          <span class="sumval">${plural(p.subs, "sub")}</span>
+          <span class="sumval">${fmtNum(p.resources)} res</span>
+          <span class="sumval">${fmtNum(p.billable)} billable</span>
+          <span class="sumval">${moneyCell(p.retail, p.cost)}</span>
+        </summary>
+        <div class="inner"><div class="subhead">By subscription</div>${subTable}${cspmBlock}</div>
+      </details>`;
+    }).join("");
+    return kpis + buildEnabledPctPanel() + `<div class="panel"><h2>Plans — expand to break down by subscription <span class="count">${byPlan.length}</span></h2>
+      <div class="section-note">Servers / APIs are split by sub-plan; Defender for CSPM additionally breaks down by its <b>Plan</b> column type.</div>
+      <div class="acc-list">${accs}</div></div>`;
+  }
+
+  /* ---------- Management group hierarchy tree ---------- */
+  function buildMgTree(rows) {
+    const root = { kind: "cloud", name: "Azure", children: new Map(), subs: new Map(), rows: [] };
+    rows.forEach(r => {
+      root.rows.push(r);
+      let node = root;
+      const segs = mgSegments(r.mgPath);
+      segs.forEach(seg => {
+        if (!node.children.has(seg)) node.children.set(seg, { kind: "mg", name: seg, children: new Map(), subs: new Map(), rows: [] });
+        node = node.children.get(seg);
+        node.rows.push(r);
+      });
+      const key = r.subId || r.sub;
+      if (!node.subs.has(key)) node.subs.set(key, { kind: "sub", name: r.sub, subId: r.subId, rows: [] });
+      node.subs.get(key).rows.push(r);
+    });
+    return root;
+  }
+
+  function nodeAgg(node) {
+    // Coverage is measured per subscription against the full plan catalogue (every plan seen in the
+    // export), then averaged, so a branch is not skewed by the subscription with the most plan rows.
+    const catalog = state.planCatalog.length ? state.planCatalog.length : 1;
+    const bySub = new Map();
+    node.rows.forEach(r => {
+      const key = r.subId || r.sub;
+      let s = bySub.get(key);
+      if (!s) { s = { enabled: new Set(), legacy: 0 }; bySub.set(key, s); }
+      if (r.enabled) { s.enabled.add(r.planLabel); if (r.legacy) s.legacy++; }
+    });
+    const subs = [...bySub.values()];
+    const covSum = subs.reduce((a, s) => a + Math.min(1, s.enabled.size / catalog), 0);
+    const planCoverage = state.planCatalog.map(p => {
+      const n = subs.filter(s => s.enabled.has(p)).length;
+      return { plan: p, subs: n, total: subs.length, pct: subs.length ? n / subs.length * 100 : 0 };
+    });
+    return {
+      resources: sum(node.rows, r => r.resources),
+      billable: sum(node.rows, r => r.billable),
+      subsTotal: subs.length,
+      subsCovered: subs.filter(s => s.enabled.size > 0).length,
+      subsFull: subs.filter(s => s.enabled.size >= catalog).length,
+      avgCoverage: subs.length ? covSum / subs.length * 100 : 0,
+      catalog,
+      planCoverage,
+      enabledPlans: sum(subs, s => s.enabled.size),
+      legacySubs: subs.filter(s => s.legacy > 0).length,
+      legacyPlans: sum(subs, s => s.legacy),
+      cost: sum(node.rows, r => r.dcost)
+    };
+  }
+
+  function flattenMg(node, id, depth, out, allIds, forceOpen) {
+    const childMgs = [...node.children.values()].sort((x, y) =>
+      sum(y.rows, r => r.resources) - sum(x.rows, r => r.resources) || x.name.localeCompare(y.name));
+    const subNodes = [...node.subs.values()].sort((x, y) => x.name.localeCompare(y.name));
+    const hasChildren = childMgs.length + subNodes.length > 0;
+    const collapsed = !forceOpen && state.mgCollapsed.has(id);
+    if (hasChildren && allIds) allIds.push(id);
+    out.push({ id, depth, kind: node.kind, name: node.name, hasChildren, collapsed, agg: nodeAgg(node) });
+    if (collapsed) return;
+    childMgs.forEach(c => flattenMg(c, id + "/" + c.name, depth + 1, out, allIds, forceOpen));
+    subNodes.forEach(s => out.push({
+      id: id + "|sub:" + (s.subId || s.name), depth: depth + 1, kind: "sub",
+      name: s.name, hasChildren: false, collapsed: false, agg: nodeAgg(s)
+    }));
+  }
+
+  const TREE_ICONS = {
+    cloud: '<svg width="15" height="15" viewBox="0 0 18 18" fill="none" stroke="#0f6cbd" stroke-width="1.4" stroke-linejoin="round"><path d="M5.4 14.2h7.2a3.3 3.3 0 0 0 .5-6.55 4.6 4.6 0 0 0-8.65-.5A3.05 3.05 0 0 0 5.4 14.2Z"/></svg>',
+    mg: '<svg width="15" height="15" viewBox="0 0 18 18" fill="none"><path d="M9 2.1 15 5.4v7.2L9 15.9 3 12.6V5.4L9 2.1Z" fill="#eaf2fb" stroke="#0f6cbd" stroke-width="1.3" stroke-linejoin="round"/><circle cx="9" cy="9" r="2" fill="#0f6cbd"/></svg>',
+    sub: '<svg width="15" height="15" viewBox="0 0 18 18" fill="none" stroke="#c19700" stroke-width="1.5" stroke-linecap="round"><circle cx="6.1" cy="9" r="3"/><path d="M9.1 9h6.3M13.2 9v2.2M15.4 9v1.7"/></svg>'
+  };
+
+  function covMeter(pct, label, body, title) {
+    const w = Math.max(0, Math.min(100, pct));
+    const cls = w >= 99.5 ? "" : (w <= 0 ? " none" : " partial");
+    return `<div class="cov"${title ? ` title="${esc(title)}"` : ""}>
+      <span class="cov-label">${label}</span>
+      <div class="cov-track"><div class="cov-fill${cls}" style="width:${w.toFixed(0)}%"></div></div>
+      ${body || ""}
+    </div>`;
+  }
+
+  // Toggle sits in the coverage cell; the breakdown itself renders as a full-width row underneath.
+  function planToggle(planCov, nodeId, open) {
+    return `<button type="button" class="pl-toggle${open ? " open" : ""}" data-planid="${esc(nodeId)}" aria-expanded="${open}">
+      <span class="pl-caret">▶</span>Coverage by plan <span class="muted">(${planCov.length})</span></button>`;
+  }
+
+  function planGrid(planCov) {
+    return `<div class="pgrid">` + planCov.map(p => {
+      const cls = p.pct >= 99.5 ? " full" : (p.pct <= 0 ? " off" : " part");
+      const tip = p.total === 1
+        ? p.plan + (p.pct >= 99.5 ? " — enabled" : " — not enabled")
+        : `${p.plan} — enabled on ${p.subs} of ${plural(p.total, "subscription")}`;
+      return `<div class="pitem${cls}" title="${esc(tip)}">
+        <span class="pname">${esc(p.plan)}</span><span class="ppct">${p.pct.toFixed(0)}%</span>
+        <div class="pbar"><div style="width:${p.pct.toFixed(0)}%"></div></div>
+      </div>`;
+    }).join("") + `</div>`;
+  }
+
+  function subCoverageCell(a, nodeId, open) {
+    if (!a.subsTotal) return '<span class="muted">—</span>';
+    const flag = a.legacyPlans ? `<div class="cov-flags"><span class="badge legacy">⚠ ${plural(a.legacyPlans, "deprecated Defender plan")}</span></div>` : "";
+    return covMeter(a.enabledPlans / a.catalog * 100,
+      `${a.enabledPlans} of ${plural(a.catalog, "plan")} enabled`,
+      planToggle(a.planCoverage, nodeId, open) + flag,
+      `${a.enabledPlans} of ${a.catalog} plans enabled on this subscription`);
+  }
+
+  function groupCoverageCell(a, nodeId, open) {
+    if (!a.subsTotal) return '<span class="muted">—</span>';
+    const flag = a.legacySubs
+      ? `<div class="cov-flags"><span class="badge legacy">⚠ Deprecated Defender Plans in ${a.legacySubs} of ${plural(a.subsTotal, "sub")}</span></div>` : "";
+    return covMeter(a.avgCoverage, `${a.avgCoverage.toFixed(0)}% avg coverage`,
+      `<span class="cov-sub">${a.subsFull} of ${plural(a.subsTotal, "sub")} fully covered</span>` + planToggle(a.planCoverage, nodeId, open) + flag,
+      `Average of each subscription's own enabled-plan percentage across ${plural(a.subsTotal, "subscription")}`);
+  }
+
+  function renderMgRow(n) {
+    const caret = n.hasChildren
+      ? `<span class="tcaret${n.collapsed ? "" : " open"}" data-mgid="${esc(n.id)}" role="button" tabindex="0" title="${n.collapsed ? "Expand" : "Collapse"}">▶</span>`
+      : '<span class="tcaret-empty"></span>';
+    let nameHtml;
+    if (n.kind === "sub") nameHtml = `<span class="tlabel mgsub">${esc(n.name)}</span>`;
+    else if (n.kind === "cloud") nameHtml = `<span class="tlabel"><b>${esc(n.name)}</b></span>`;
+    else nameHtml = `<span class="tlabel">${esc(n.name)} <span class="muted">(${n.agg.subsCovered} of ${plural(n.agg.subsTotal, "subscription")})</span></span>`;
+    const open = state.mgPlansOpen.has(n.id);
+    const cov = n.kind === "sub" ? subCoverageCell(n.agg, n.id, open) : groupCoverageCell(n.agg, n.id, open);
+    const main = `<tr class="mgrow${n.kind === "sub" ? " is-sub" : ""}">
+      <td><span class="tname" style="padding-left:${n.depth * 20}px" title="${esc(n.name)}">${caret}<span class="ticon">${TREE_ICONS[n.kind]}</span>${nameHtml}</span></td>
+      <td class="num">${fmtNum(n.agg.resources)}</td>
+      <td class="num">${fmtNum(n.agg.billable)}</td>
+      <td class="num"><span class="money">${fmtMoney(n.agg.cost)}</span></td>
+      <td>${cov}</td>
+    </tr>`;
+    if (!open || !n.agg.subsTotal) return main;
+    return main + `<tr class="mgplans"><td colspan="5">
+      <div class="pwrap" style="margin-left:${n.depth * 20 + 26}px">
+        <div class="pwrap-title">${esc(n.name)} — coverage by plan</div>${planGrid(n.agg.planCoverage)}
+      </div></td></tr>`;
+  }
+
+  // Average enabled-plan percentage per management group, listed in hierarchy order.
+  function mgCoverageChart(flat) {
+    const groups = flat.filter(n => n.kind === "mg" && n.agg.subsTotal);
+    if (!groups.length) return "";
+    const bars = groups.map(n => {
+      const a = n.agg;
+      const tip = `${n.name} — ${a.avgCoverage.toFixed(0)}% average coverage, ${a.subsFull} of ${plural(a.subsTotal, "subscription")} fully covered`
+        + (a.legacySubs ? `, deprecated Defender plans in ${a.legacySubs}` : "")
+        + "\n\n" + a.planCoverage.map(p => `${p.plan}: ${p.pct.toFixed(0)}%`).join("\n");
+      const legacy = a.legacySubs
+        ? ` · <span style="color:var(--warn)" title="Deprecated Defender plans in ${a.legacySubs} of ${plural(a.subsTotal, "subscription")}">⚠ ${a.legacySubs} deprecated</span>` : "";
+      return `<div class="bar-row" title="${esc(tip)}">
+        <span class="name" style="padding-left:${(n.depth - 1) * 14}px">${esc(n.name)}</span>
+        <div class="bar-track"><div class="bar-fill" style="width:${a.avgCoverage.toFixed(1)}%;background:linear-gradient(90deg,#0e6b3d,#3fb27a)"></div></div>
+        <span class="val"><b>${Math.round(a.avgCoverage)}%</b> <span class="muted">· ${a.subsFull} of ${a.subsTotal} fully covered</span>${legacy}</span>
+      </div>`;
+    }).join("");
+    return `<div class="panel"><h2>Defender Plan Coverage by Management Group <span class="count">${groups.length}</span></h2>
+      <div class="section-note">Average of each subscription's enabled-plan percentage (out of ${plural(state.planCatalog.length, "plan")}) across every subscription in the group, including nested groups. Hover a bar for the per-plan split.</div>
+      <div class="bars mg">${bars}</div></div>`;
+  }
+
+  function mgCostChart(flat) {
+    const groups = flat.filter(n => n.kind === "mg" && n.agg.subsTotal);
+    if (!groups.length) return "";
+    const maxCost = Math.max(1, ...groups.map(n => n.agg.cost));
+    const bars = groups.map(n => {
+      const a = n.agg;
+      return `<div class="bar-row" title="${esc(n.name)} — ${fmtMoney(a.cost)} per month across ${plural(a.resources, "resource")} (${fmtNum(a.billable)} billable units)">
+        <span class="name" style="padding-left:${(n.depth - 1) * 14}px">${esc(n.name)}</span>
+        <div class="bar-track"><div class="bar-fill" style="width:${(a.cost / maxCost * 100).toFixed(1)}%"></div></div>
+        <span class="val"><b>${fmtMoney(a.cost)}</b> <span class="muted">· ${plural(a.resources, "resource")} · ${fmtNum(a.billable)} billable</span></span>
+      </div>`;
+    }).join("");
+    return `<div class="panel"><h2>Est. Monthly Cost &amp; Resources by Management Group <span class="count">${groups.length}</span></h2>
+      <div class="section-note">Rolled-up estimated monthly cost, total resources and billable units for every subscription in the group, including nested groups. Listed in hierarchy order.</div>
+      <div class="bars mg">${bars}</div></div>`;
+  }
+
+  function pageByMg(rows) {
+    const hasMg = rows.some(r => r.mgTop && r.mgTop !== "(None)");
+    const byTop = aggByMg(rows, r => r.mgTop);
+    const kpis = kpiRow(overviewKpis(rows).concat([
+      { label: "Management Groups", value: fmtNum(new Set(rows.map(r => r.mgPath)).size), sub: plural(byTop.length, "top-level group") }
+    ]));
+    if (!rows.length) return kpis + '<div class="panel"><div class="empty">No data in the current view.</div></div>';
+    const note = hasMg ? "" : `<div class="panel callout"><h2>ℹ️ Management group data not found in this export</h2>
+      <div class="calc"><p>This CSV was produced before management-group collection was added. Re-run the updated PowerShell cost-estimation script and reload the export to populate the hierarchy. Until then, all rows appear under <b>${NO_MG}</b>.</p></div></div>`;
+    const flat = [], allIds = [];
+    flattenMg(buildMgTree(rows), "Azure", 0, flat, allIds);
+    const chartFlat = [];
+    flattenMg(buildMgTree(rows), "Azure", 0, chartFlat, null, true);
+    const chart = `<div class="grid-2">${mgCoverageChart(chartFlat)}${mgCostChart(chartFlat)}</div>`;
+    const treePanel = `<div class="panel"><h2>Management Group Hierarchy
+        <span class="count">${plural(flat.filter(n => n.kind === "sub").length, "subscription")}</span>
+        <span class="h2-actions">
+          <button type="button" class="btn sm" id="mgPlansShowAll">Show plan coverage</button>
+          <button type="button" class="btn sm" id="mgPlansHideAll">Hide plan coverage</button>
+          <button type="button" class="btn sm" id="mgExpandAll">Expand all</button>
+          <button type="button" class="btn sm" id="mgCollapseAll">Collapse all</button>
+        </span></h2>
+      <div class="section-note">Subscriptions roll up under their management groups. This export contains <b>${plural(state.planCatalog.length, "Defender plan")}</b> that can be enabled on a subscription, so a subscription's <b>Defender coverage</b> is how many of those it has enabled; a management group shows the <b>average of its child subscriptions' coverage</b>. Expand <b>Coverage by plan</b> on any row to see every plan with the <b>percentage of subscriptions in that branch</b> that have it enabled (100% or 0% on a single subscription). A <span class="badge legacy">⚠ Deprecated</span> flag means at least one subscription in that branch still has a deprecated Defender plan enabled.</div>      <div class="tbl-plain"><table class="mgtree">
+        <thead><tr><th>Name</th><th class="num">Total resources</th><th class="num">Billable Units</th><th class="num">Est. Monthly Cost</th><th>Defender coverage</th></tr></thead>
+        <tbody>${flat.map(renderMgRow).join("")}</tbody>
+      </table></div></div>`;
+    state.mgAllIds = allIds;
+    return kpis + note + chart + treePanel;
+  }
+
+  function metersFor(planName, subPlan) {
+    let list = METERS.filter(m => m.plan === planName);
+    if (SUBPLAN_PLANS.has(planName) && subPlan) {
+      const f = list.filter(m => m.subPlan === subPlan);
+      if (f.length) list = f;
+    }
+    if (!list.length) return '<span class="muted">—</span>';
+    return list.map(m => `<code class="meter" title="${esc(m.unit)} — ${esc(m.basis)}${m.subPlan ? (" — " + esc(m.subPlan)) : ""}">${esc(m.meterId)}</code>`).join(" ");
+  }
+
+  function pagePricing() {
+    const rows = state.all;
+    const byPlan = aggByPlan(rows);
+    const totRetail = sum(rows, r => r.cost);
+    const totDisc = sum(rows, r => r.dcost);
+
+    const kpis = `<section class="kpis">
+      <div class="kpi hero"><div class="label">Estimated Monthly (after discount)</div><div class="value" id="kpiDisc">${fmtMoney(totDisc)}</div><div class="sub" id="kpiDiscYear">${fmtMoney(totDisc * 12)} / year</div></div>
+      <div class="kpi"><div class="label">Retail Monthly (list price)</div><div class="value" id="kpiRetail">${fmtMoney(totRetail)}</div><div class="sub">before any discount</div></div>
+      <div class="kpi"><div class="label">Total Monthly Savings</div><div class="value" id="kpiSave">${fmtMoney(totRetail - totDisc)}</div><div class="sub">from applied discounts</div></div>
+    </section>`;
+
+    const commit = `<div class="panel"><h2>Azure Commitment Discount</h2>
+      <div class="pricing-form">
+        <div class="field">
+          <label for="commitDisc">Azure Commitment Discount (%)</label>
+          <input id="commitDisc" class="discinput" type="number" min="0" max="100" step="0.5" value="${state.commitmentDiscount ? esc(String(state.commitmentDiscount)) : ""}" placeholder="0" />
+        </div>
+        <p class="muted" style="margin:0;flex:1;min-width:260px">This becomes the <b>default discount</b> applied to every plan below. Override any individual plan in its own <b>Discount %</b> field. Changes update every table, chart and KPI across the report.</p>
+      </div>
+    </div>`;
+
+    const planTable = `<div class="panel"><h2>Per-Plan Discount &amp; Estimated Cost <span class="count">${byPlan.length}</span></h2>
+      <div class="section-note">Enter a discount % per plan to override the Azure Commitment Discount. Servers / APIs are listed per sub-plan because the sub-plan selects the meter. <a href="${PRICING_URL}" target="_blank" rel="noopener">Official Defender for Cloud pricing ↗</a></div>
+      <div class="tbl-wide"><table>
+        <thead><tr>
+          <th>Plan</th><th>Sub-plan</th><th class="num">Billable Units</th><th>Meter(s) used</th>
+          <th class="num">Retail Monthly</th><th>Discount %</th><th class="num">Estimated Monthly</th>
+        </tr></thead>
+        <tbody>
+          ${byPlan.map(p => {
+            const ov = state.planDiscounts[p.name];
+            return `<tr>
+              <td>${cspmName(p.planName, rows)}</td>
+              <td>${p.subPlan ? `<span class="badge sub">${esc(p.subPlan)}</span>` : '<span class="muted">—</span>'}</td>
+              <td class="num">${fmtNum(p.billable)}</td>
+              <td>${metersFor(p.planName, p.subPlan)}</td>
+              <td class="num"><span class="money">${fmtMoney(p.retail)}</span></td>
+              <td><input class="discinput planDisc" data-plan="${esc(p.name)}" type="number" min="0" max="100" step="0.5" aria-label="Discount % for ${esc(p.name)}" value="${ov !== undefined ? esc(String(ov)) : ""}" placeholder="${state.commitmentDiscount ? esc(state.commitmentDiscount + "% (commitment)") : "0"}" /></td>
+              <td class="num" data-disc-cell="${esc(p.name)}"><span class="money">${fmtMoney(p.cost)}</span></td>
+            </tr>`;
+          }).join("")}
+        </tbody>
+        <tfoot><tr>
+          <td>Total</td><td></td><td class="num">${fmtNum(sum(byPlan, p => p.billable))}</td><td></td>
+          <td class="num"><span class="money" id="pdRetailTotal">${fmtMoney(totRetail)}</span></td><td></td>
+          <td class="num"><span class="money" id="pdDiscTotal">${fmtMoney(totDisc)}</span></td>
+        </tr></tfoot>
+      </table></div>
+    </div>`;
+
+    const calc = `<div class="panel"><h2>How the Estimate Is Calculated</h2>
+      <div class="calc">
+        <p>The PowerShell script pulls live list prices from the <b>Azure Retail Prices API</b> for the meter IDs below, converts each to a monthly figure, then multiplies by the billable units counted in your environment:</p>
+        <ul>
+          <li><code>unitOfMeasure = 1/Hour</code> → <code>monthlyPrice = unitPrice × 730</code></li>
+          <li><code>unitOfMeasure = 1/Month</code> → <code>monthlyPrice = unitPrice</code></li>
+          <li><code>unitOfMeasure = 1 GB</code> → <code>monthlyPrice = unitPrice</code> (per GB)</li>
+        </ul>
+        <p><code>estimatedMonthlyCost = monthlyPrice × BillableUnits</code>, then this page applies <code>estimate × (1 − discount%)</code>.</p>
+        <p class="muted">Notes: CSPM serverless is billed 8:1 and serverless containers 2:1; Defender for Servers and APIs use the meter for their sub-plan (P1/P2 or P1–P5); Containers, Cosmos DB, Storage Malware Scanning, AI and APIs are estimated from 30-day consumption metrics.</p>
+      </div>
+    </div>`;
+
+    const catalog = `<div class="panel"><h2>Meter Reference (from the PowerShell script) <span class="count">${METERS.length}</span></h2>
+      <div class="tbl-wide">` +
+      staticTable([
+        { title: "Plan", render: m => cspmName(m.plan, state.all) },
+        { title: "Sub-plan", render: m => m.subPlan ? `<span class="badge sub">${esc(m.subPlan)}</span>` : '<span class="muted">—</span>' },
+        { title: "Meter ID", render: m => `<code class="meter">${esc(m.meterId)}</code>` },
+        { title: "Unit", render: m => esc(m.unit) },
+        { title: "Monthly basis", render: m => `<code>${esc(m.basis)}</code>` },
+        { title: "Billable units", render: m => esc(m.billable) }
+      ], METERS) +
+      `</div></div>`;
+
+    const links = `<div class="panel"><h2>Official Pricing &amp; References</h2>
+      <div class="linkrow">
+        <a class="btn primary" href="${PRICING_URL}" target="_blank" rel="noopener">Defender for Cloud pricing ↗</a>
+        <a class="btn" href="https://learn.microsoft.com/rest/api/cost-management/retail-prices/azure-retail-prices" target="_blank" rel="noopener">Azure Retail Prices API ↗</a>
+        <span class="muted">List prices shown are Microsoft retail (USD). Your negotiated/commitment pricing may differ — enter it above.</span>
+      </div>
+    </div>`;
+
+    return kpis + commit + planTable + calc + catalog + links;
+  }
+
+  /* ---------- Discount UI updates ---------- */
+  function refreshPricingNumbers() {
+    document.querySelectorAll("[data-disc-cell]").forEach(td => {
+      const pl = td.getAttribute("data-disc-cell");
+      const disc = sum(state.all.filter(r => r.planLabel === pl), r => r.dcost);
+      td.innerHTML = `<span class="money">${fmtMoney(disc)}</span>`;
+    });
+    document.querySelectorAll("input.planDisc").forEach(inp => {
+      inp.placeholder = state.commitmentDiscount ? (state.commitmentDiscount + "% (commitment)") : "0";
+    });
+    const totRetail = sum(state.all, r => r.cost);
+    const totDisc = sum(state.all, r => r.dcost);
+    setText("pdRetailTotal", fmtMoney(totRetail));
+    setText("pdDiscTotal", fmtMoney(totDisc));
+    setText("kpiRetail", fmtMoney(totRetail));
+    setText("kpiDisc", fmtMoney(totDisc));
+    setText("kpiDiscYear", fmtMoney(totDisc * 12) + " / year");
+    setText("kpiSave", fmtMoney(totRetail - totDisc));
+  }
+
+  function wirePricingInputs() {
+    const commit = document.getElementById("commitDisc");
+    if (commit) {
+      commit.addEventListener("input", e => {
+        const v = parseFloat(e.target.value);
+        state.commitmentDiscount = isNaN(v) ? 0 : Math.min(100, Math.max(0, v));
+        recomputeCosts();
+        refreshPricingNumbers();
+        updateDiscountBanner();
+      });
+    }
+    document.querySelectorAll("input.planDisc").forEach(inp => {
+      inp.addEventListener("input", e => {
+        const pl = inp.getAttribute("data-plan");
+        const val = String(e.target.value).trim();
+        if (val === "") delete state.planDiscounts[pl];
+        else { const v = parseFloat(val); state.planDiscounts[pl] = isNaN(v) ? 0 : Math.min(100, Math.max(0, v)); }
+        recomputeCosts();
+        refreshPricingNumbers();
+        updateDiscountBanner();
+      });
+    });
+  }
+
+  function updateDiscountBanner() {
+    const el = document.getElementById("discBanner");
+    if (!el) return;
+    if (!anyDiscount()) { el.style.display = "none"; el.innerHTML = ""; return; }
+    el.style.display = "";
+    const overrides = Object.keys(state.planDiscounts).filter(k => state.planDiscounts[k] !== undefined && state.planDiscounts[k] !== "").length;
+    const rowsHtml = Array.from(new Set(state.all.map(r => r.planLabel))).sort().map(pl => {
+      const e = eff(pl);
+      if (e <= 0) return "";
+      const isOv = state.planDiscounts[pl] !== undefined && state.planDiscounts[pl] !== "";
+      return `<tr><td>${esc(pl)}</td><td class="num">${fmtPct(e)}</td><td>${isOv ? '<span class="badge plan">plan override</span>' : '<span class="muted">commitment</span>'}</td></tr>`;
+    }).join("");
+    el.innerHTML = `<span class="disc-ico" aria-hidden="true">🏷️</span>
+      <details class="disc-details"><summary><b>A discount has been applied to all estimated costs.</b>
+        Azure Commitment Discount ${fmtPct(state.commitmentDiscount)}${overrides ? ` · ${plural(overrides, "plan override")}` : ""} — <span class="disc-expand">show all applied discounts</span>
+        · Adjust on the <a href="#" data-nav="pricing">Pricing Details</a> page · <a href="${PRICING_URL}" target="_blank" rel="noopener">Official pricing ↗</a></summary>
+        <div class="disc-list"><table><thead><tr><th>Plan</th><th class="num">Effective Discount</th><th>Source</th></tr></thead>
+        <tbody>${rowsHtml || '<tr><td colspan="3" class="muted">No plan-level discounts applied.</td></tr>'}</tbody></table></div>
+      </details>`;
+  }
+
+  /* ---------- Event wiring for rendered content ---------- */
+  function wireTableSort() {
+    document.querySelectorAll("table[data-tid] thead th").forEach(th => {
+      th.addEventListener("click", () => {
+        const tid = th.closest("table").getAttribute("data-tid");
+        const s = state.sort[tid];
+        if (!s) return;
+        const key = th.getAttribute("data-key");
+        if (s.key === key) s.dir *= -1; else { s.key = key; s.dir = 1; }
+        render();
+      });
+    });
+  }
+
+  function togglePlanFilter(pl) {
+    state.filters.plan = (state.filters.plan === pl) ? "" : pl;
+    const sel = document.getElementById("fPlan");
+    if (sel) sel.value = state.filters.plan;
+    render();
+  }
+
+  function wireEnablementBars() {
+    document.querySelectorAll(".enable-bar[data-plan]").forEach(el => {
+      const act = () => togglePlanFilter(el.getAttribute("data-plan"));
+      el.addEventListener("click", act);
+      el.addEventListener("keydown", e => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); act(); }
+      });
+    });
+  }
+
+  function wireMgTree() {
+    document.querySelectorAll(".tcaret[data-mgid]").forEach(el => {
+      const act = e => {
+        e.stopPropagation();
+        const id = el.getAttribute("data-mgid");
+        if (state.mgCollapsed.has(id)) state.mgCollapsed.delete(id); else state.mgCollapsed.add(id);
+        render();
+      };
+      el.addEventListener("click", act);
+      el.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); act(e); } });
+    });
+    const expand = document.getElementById("mgExpandAll");
+    const collapse = document.getElementById("mgCollapseAll");
+    if (expand) expand.addEventListener("click", () => { state.mgCollapsed.clear(); render(); });
+    if (collapse) collapse.addEventListener("click", () => {
+      (state.mgAllIds || []).forEach(id => state.mgCollapsed.add(id));
+      state.mgCollapsed.delete("Azure");
+      render();
+    });
+
+    // Per-plan breakdown is collapsed by default; remember which rows the user opened across re-renders.
+    document.querySelectorAll(".pl-toggle[data-planid]").forEach(b => {
+      b.addEventListener("click", () => {
+        const id = b.getAttribute("data-planid");
+        if (state.mgPlansOpen.has(id)) state.mgPlansOpen.delete(id); else state.mgPlansOpen.add(id);
+        render();
+      });
+    });
+    const showPlans = document.getElementById("mgPlansShowAll");
+    const hidePlans = document.getElementById("mgPlansHideAll");
+    if (showPlans) showPlans.addEventListener("click", () => {
+      document.querySelectorAll(".pl-toggle[data-planid]").forEach(b => state.mgPlansOpen.add(b.getAttribute("data-planid")));
+      render();
+    });
+    if (hidePlans) hidePlans.addEventListener("click", () => { state.mgPlansOpen.clear(); render(); });
+  }
+
+  function gotoPage(p) {
+    if (!PAGES[p]) p = "overview";
+    state.page = p;
+    document.querySelectorAll("#sideNav .nav-item").forEach(n => {
+      const on = n.getAttribute("data-page") === p;
+      n.classList.toggle("active", on);
+      if (on) n.setAttribute("aria-current", "page"); else n.removeAttribute("aria-current");
+    });
+    window.scrollTo(0, 0);
+    render();
+  }
+
+  const PAGE_FNS = {
+    overview: pageOverview, legacy: pageLegacy, assignments: pageAssignments,
+    bysub: pageBySub, bymg: pageByMg, pricing: pagePricing
+  };
+
+  function render() {
+    const p = PAGES[state.page] || PAGES.overview;
+    setText("pageTitle", p.title);
+    setText("pageDesc", p.desc);
+    const filtersEl = document.getElementById("filters");
+    if (filtersEl) filtersEl.style.display = (state.page === "pricing") ? "none" : "flex";
+    const rows = (state.page === "pricing") ? state.all : applyFilters();
+    document.getElementById("content").innerHTML =
+      `<div id="discBanner" class="disc-banner" style="display:none"></div>` + (PAGE_FNS[state.page] || pageOverview)(rows);
+    wireTableSort();
+    wireEnablementBars();
+    wireMgTree();
+    if (state.page === "pricing") wirePricingInputs();
+    updateDiscountBanner();
+  }
+
+  function populateFilters() {
+    const subSel = document.getElementById("fSub");
+    const planSel = document.getElementById("fPlan");
+    const mgSel = document.getElementById("fMgName");
+    const subs = Array.from(new Set(state.all.map(r => r.sub))).sort();
+    const plans = Array.from(new Set(state.all.map(r => r.planLabel))).sort();
+    const mgs = Array.from(new Set(state.all.flatMap(r => mgSegments(r.mgPath)))).sort();
+    subSel.innerHTML = '<option value="">All subscriptions</option>' + subs.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join("");
+    planSel.innerHTML = '<option value="">All plans</option>' + plans.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join("");
+    mgSel.innerHTML = '<option value="">All management groups</option>' + mgs.map(m => `<option value="${esc(m)}">${esc(m)}</option>`).join("");
+  }
+
+  function wireControls() {
+    document.querySelectorAll("#sideNav .nav-item").forEach(a => {
+      a.addEventListener("click", e => { e.preventDefault(); gotoPage(a.getAttribute("data-page")); });
+    });
+    document.addEventListener("click", e => {
+      const a = e.target.closest("[data-nav]");
+      if (a) { e.preventDefault(); gotoPage(a.getAttribute("data-nav")); }
+    });
+
+    document.getElementById("fSub").addEventListener("change", e => { state.filters.sub = e.target.value; render(); });
+    document.getElementById("fPlan").addEventListener("change", e => { state.filters.plan = e.target.value; render(); });
+    document.getElementById("fMgName").addEventListener("change", e => { state.filters.mg = e.target.value; state.mgCollapsed.clear(); render(); });
+    document.getElementById("fSearch").addEventListener("input", e => { state.filters.search = e.target.value; render(); });
+    document.querySelectorAll("#fStatus .chip").forEach(chip => {
+      chip.addEventListener("click", () => {
+        document.querySelectorAll("#fStatus .chip").forEach(c => {
+          const on = c === chip;
+          c.classList.toggle("active", on);
+          c.setAttribute("aria-pressed", String(on));
+        });
+        state.filters.status = chip.getAttribute("data-v");
+        render();
+      });
+    });
+    document.getElementById("resetBtn").addEventListener("click", () => {
+      state.filters = { sub: "", plan: "", search: "", status: "all", mg: "" };
+      document.getElementById("fSub").value = "";
+      document.getElementById("fPlan").value = "";
+      document.getElementById("fMgName").value = "";
+      document.getElementById("fSearch").value = "";
+      document.querySelectorAll("#fStatus .chip").forEach(c => c.classList.toggle("active", c.getAttribute("data-v") === "all"));
+      render();
+    });
+
+    const fileInput = document.getElementById("fileInput");
+    document.getElementById("loadBtn").addEventListener("click", () => fileInput.click());
+    fileInput.addEventListener("change", e => { if (e.target.files[0]) readFile(e.target.files[0]); });
+
+    const app = document.body;
+    ["dragenter", "dragover"].forEach(ev => app.addEventListener(ev, e => { e.preventDefault(); app.classList.add("drag-over"); }));
+    app.addEventListener("dragleave", e => { if (!e.relatedTarget) app.classList.remove("drag-over"); });
+    app.addEventListener("drop", e => {
+      e.preventDefault();
+      app.classList.remove("drag-over");
+      const f = e.dataTransfer.files[0];
+      if (f) readFile(f);
+    });
+  }
+
+  function readFile(file) {
+    const reader = new FileReader();
+    reader.onload = () => loadData(reader.result, file.name);
+    reader.readAsText(file);
+  }
+
+  function loadData(text, sourceName) {
+    const records = normalize(toObjects(parseCSV(text)));
+    if (!records.length) {
+      document.getElementById("content").innerHTML = '<div class="panel"><div class="empty">No rows found in this CSV.</div></div>';
+      return;
+    }
+    state.all = records;
+    state.filters = { sub: "", plan: "", search: "", status: "all", mg: "" };
+    state.mgCollapsed.clear();
+    state.mgPlansOpen.clear();
+    state.planCatalog = [...new Set(records.map(r => r.planLabel).filter(Boolean))].sort();
+    recomputeCosts();
+    setText("sourceInfo", (sourceName || "embedded data") + " · " + plural(records.length, "row") + " · loaded " + new Date().toLocaleString());
+    populateFilters();
+    render();
+  }
+
+  function boot() {
+    wireControls();
+    const embedded = document.getElementById("embedded-csv").textContent.trim();
+    if (embedded && embedded.indexOf("SubscriptionID") !== -1) {
+      loadData(embedded, "embedded export");
+    } else {
+      setText("sourceInfo", "No data embedded — load a CSV export to begin");
+      document.getElementById("content").innerHTML =
+        '<div class="panel"><div class="empty">Drag &amp; drop your <b>AzureMDCResourcesEstimation_*.csv</b> export here, or select <b>Load CSV…</b>.</div></div>';
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", boot);
+})();
+</script>
+</body>
+</html>
