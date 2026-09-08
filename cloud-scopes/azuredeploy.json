@@ -35,6 +35,13 @@
       "type": "int",
       "defaultValue": 1,
       "minValue": 1
+    },
+    "cloudScopeNamePrefix": {
+      "type": "string",
+      "defaultValue": "Azure - ",
+      "metadata": {
+        "description": "Prefix added to each management-group display name when naming its Defender cloud scope."
+      }
     }
   },
   "variables": {
@@ -61,6 +68,9 @@
             },
             "scheduleInterval": {
               "type": "Int"
+            },
+            "cloudScopeNamePrefix": {
+              "type": "String"
             }
           },
           "triggers": {
@@ -175,7 +185,7 @@
               "type": "Http",
               "inputs": {
                 "method": "GET",
-                "uri": "https://graph.microsoft.com/beta/security/zones?$top=1000&$select=id,displayName",
+                "uri": "https://graph.microsoft.com/beta/security/zones?$select=id,displayName",
                 "authentication": {
                   "type": "ManagedServiceIdentity",
                   "audience": "https://graph.microsoft.com"
@@ -223,7 +233,7 @@
                   "type": "Query",
                   "inputs": {
                     "from": "@body('List_existing_cloud_scopes')?['value']",
-                    "where": "@equals(toLower(item()?['displayName']), toLower(concat('Azure - ', items('For_each_management_group')?['properties']?['displayName'])))"
+                    "where": "@equals(toLower(item()?['displayName']), toLower(concat(parameters('cloudScopeNamePrefix'), items('For_each_management_group')?['properties']?['displayName'])))"
                   },
                   "runAfter": {
                     "Build_desired_environments": [
@@ -239,7 +249,7 @@
                       "type": "Http",
                       "inputs": {
                         "method": "GET",
-                        "uri": "@concat('https://graph.microsoft.com/beta/security/zones/', first(body('Find_existing_cloud_scope'))?['id'], '/environments?$top=1000')",
+                        "uri": "@concat('https://graph.microsoft.com/beta/security/zones/', first(body('Find_existing_cloud_scope'))?['id'], '/environments')",
                         "authentication": {
                           "type": "ManagedServiceIdentity",
                           "audience": "https://graph.microsoft.com"
@@ -342,7 +352,7 @@
                             "Content-Type": "application/json"
                           },
                           "body": {
-                            "displayName": "@concat('Azure - ', items('For_each_management_group')?['properties']?['displayName'])",
+                            "displayName": "@concat(parameters('cloudScopeNamePrefix'), items('For_each_management_group')?['properties']?['displayName'])",
                             "description": "@concat('Automatically synchronized from Azure management group ', items('For_each_management_group')?['name'], '.')",
                             "environments": "@body('Build_desired_environments')"
                           },
@@ -380,6 +390,9 @@
           },
           "scheduleInterval": {
             "value": "[parameters('scheduleInterval')]"
+          },
+          "cloudScopeNamePrefix": {
+            "value": "[parameters('cloudScopeNamePrefix')]"
           }
         }
       }

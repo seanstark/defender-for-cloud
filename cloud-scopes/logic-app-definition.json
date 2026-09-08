@@ -1,0 +1,338 @@
+{
+  "definition": {
+  "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "scheduleFrequency": {
+      "type": "String"
+    },
+    "scheduleInterval": {
+      "type": "Int"
+    },
+    "cloudScopeNamePrefix": {
+      "type": "String"
+    }
+  },
+  "triggers": {
+    "Scheduled_sync": {
+      "type": "Recurrence",
+      "recurrence": {
+        "frequency": "@parameters('scheduleFrequency')",
+        "interval": "@parameters('scheduleInterval')"
+      }
+    }
+  },
+  "actions": {
+    "Initialize_sync_state": {
+      "type": "InitializeVariable",
+      "inputs": {
+        "variables": [
+          {
+            "name": "allEntities",
+            "type": "array",
+            "value": []
+          },
+          {
+            "name": "mergedEntities",
+            "type": "array",
+            "value": []
+          },
+          {
+            "name": "entitiesNextLink",
+            "type": "string",
+            "value": "https://management.azure.com/providers/Microsoft.Management/getEntities?api-version=2020-05-01&$select=Name,DisplayName,Type,ParentNameChain&$top=1000"
+          }
+        ]
+      },
+      "runAfter": {}
+    },
+    "Get_all_hierarchy_entities": {
+      "type": "Until",
+      "expression": "@equals(variables('entitiesNextLink'), '')",
+      "limit": {
+        "count": 100,
+        "timeout": "PT1H"
+      },
+      "actions": {
+        "Get_entities_page": {
+          "type": "Http",
+          "inputs": {
+            "method": "POST",
+            "uri": "@variables('entitiesNextLink')",
+            "authentication": {
+              "type": "ManagedServiceIdentity",
+              "audience": "https://management.azure.com/"
+            }
+          },
+          "runAfter": {}
+        },
+        "Merge_entities_page": {
+          "type": "SetVariable",
+          "inputs": {
+            "name": "mergedEntities",
+            "value": "@union(variables('allEntities'), body('Get_entities_page')?['value'])"
+          },
+          "runAfter": {
+            "Get_entities_page": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Save_merged_entities": {
+          "type": "SetVariable",
+          "inputs": {
+            "name": "allEntities",
+            "value": "@variables('mergedEntities')"
+          },
+          "runAfter": {
+            "Merge_entities_page": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Set_next_entities_page": {
+          "type": "SetVariable",
+          "inputs": {
+            "name": "entitiesNextLink",
+            "value": "@coalesce(body('Get_entities_page')?['nextLink'], '')"
+          },
+          "runAfter": {
+            "Save_merged_entities": [
+              "Succeeded"
+            ]
+          }
+        }
+      },
+      "runAfter": {
+        "Initialize_sync_state": [
+          "Succeeded"
+        ]
+      }
+    },
+    "Filter_management_groups": {
+      "type": "Query",
+      "inputs": {
+        "from": "@variables('allEntities')",
+        "where": "@and(contains(toLower(item()?['type']), 'microsoft.management/managementgroups'), not(endsWith(toLower(item()?['type']), '/subscriptions')))"
+      },
+      "runAfter": {
+        "Get_all_hierarchy_entities": [
+          "Succeeded"
+        ]
+      }
+    },
+    "List_existing_cloud_scopes": {
+      "type": "Http",
+      "inputs": {
+        "method": "GET",
+        "uri": "https://graph.microsoft.com/beta/security/zones?$select=id,displayName",
+        "authentication": {
+          "type": "ManagedServiceIdentity",
+          "audience": "https://graph.microsoft.com"
+        }
+      },
+      "runAfter": {
+        "Get_all_hierarchy_entities": [
+          "Succeeded"
+        ]
+      }
+    },
+    "For_each_management_group": {
+      "type": "Foreach",
+      "foreach": "@body('Filter_management_groups')",
+      "runtimeConfiguration": {
+        "concurrency": {
+          "repetitions": 1
+        }
+      },
+      "actions": {
+        "Filter_descendant_subscriptions": {
+          "type": "Query",
+          "inputs": {
+            "from": "@variables('allEntities')",
+            "where": "@and(endsWith(toLower(item()?['type']), '/subscriptions'), contains(coalesce(item()?['properties']?['parentNameChain'], json('[]')), items('For_each_management_group')?['name']))"
+          },
+          "runAfter": {}
+        },
+        "Build_desired_environments": {
+          "type": "Select",
+          "inputs": {
+            "from": "@body('Filter_descendant_subscriptions')",
+            "select": {
+              "kind": "azureSubscription",
+              "id": "@concat('/subscriptions/', item()?['name'])"
+            }
+          },
+          "runAfter": {
+            "Filter_descendant_subscriptions": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Find_existing_cloud_scope": {
+          "type": "Query",
+          "inputs": {
+            "from": "@body('List_existing_cloud_scopes')?['value']",
+            "where": "@equals(toLower(item()?['displayName']), toLower(concat(parameters('cloudScopeNamePrefix'), items('For_each_management_group')?['properties']?['displayName'])))"
+          },
+          "runAfter": {
+            "Build_desired_environments": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Cloud_scope_exists": {
+          "type": "If",
+          "expression": "@greater(length(body('Find_existing_cloud_scope')), 0)",
+          "actions": {
+            "List_scope_environments": {
+              "type": "Http",
+              "inputs": {
+                "method": "GET",
+                "uri": "@concat('https://graph.microsoft.com/beta/security/zones/', first(body('Find_existing_cloud_scope'))?['id'], '/environments')",
+                "authentication": {
+                  "type": "ManagedServiceIdentity",
+                  "audience": "https://graph.microsoft.com"
+                }
+              },
+              "runAfter": {}
+            },
+            "Add_missing_subscriptions": {
+              "type": "Foreach",
+              "foreach": "@body('Filter_descendant_subscriptions')",
+              "runtimeConfiguration": {
+                "concurrency": {
+                  "repetitions": 1
+                }
+              },
+              "actions": {
+                "Subscription_is_missing": {
+                  "type": "If",
+                  "expression": "@not(contains(string(body('List_scope_environments')?['value']), concat('/subscriptions/', items('Add_missing_subscriptions')?['name'])))",
+                  "actions": {
+                    "Attach_subscription": {
+                      "type": "Http",
+                      "inputs": {
+                        "method": "POST",
+                        "uri": "@concat('https://graph.microsoft.com/beta/security/zones/', first(body('Find_existing_cloud_scope'))?['id'], '/environments')",
+                        "headers": {
+                          "Content-Type": "application/json"
+                        },
+                        "body": {
+                          "kind": "azureSubscription",
+                          "id": "@concat('/subscriptions/', items('Add_missing_subscriptions')?['name'])"
+                        },
+                        "authentication": {
+                          "type": "ManagedServiceIdentity",
+                          "audience": "https://graph.microsoft.com"
+                        }
+                      },
+                      "runAfter": {}
+                    }
+                  },
+                  "else": {
+                    "actions": {}
+                  },
+                  "runAfter": {}
+                }
+              },
+              "runAfter": {
+                "List_scope_environments": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Remove_stale_subscriptions": {
+              "type": "Foreach",
+              "foreach": "@body('List_scope_environments')?['value']",
+              "runtimeConfiguration": {
+                "concurrency": {
+                  "repetitions": 1
+                }
+              },
+              "actions": {
+                "Subscription_is_stale": {
+                  "type": "If",
+                  "expression": "@and(equals(item()?['kind'], 'azureSubscription'), not(contains(string(body('Build_desired_environments')), item()?['id'])))",
+                  "actions": {
+                    "Detach_subscription": {
+                      "type": "Http",
+                      "inputs": {
+                        "method": "DELETE",
+                        "uri": "@concat('https://graph.microsoft.com/beta/security/zones/', first(body('Find_existing_cloud_scope'))?['id'], '/environments/', uriComponent(items('Remove_stale_subscriptions')?['id']))",
+                        "authentication": {
+                          "type": "ManagedServiceIdentity",
+                          "audience": "https://graph.microsoft.com"
+                        }
+                      },
+                      "runAfter": {}
+                    }
+                  },
+                  "else": {
+                    "actions": {}
+                  },
+                  "runAfter": {}
+                }
+              },
+              "runAfter": {
+                "List_scope_environments": [
+                  "Succeeded"
+                ]
+              }
+            }
+          },
+          "else": {
+            "actions": {
+              "Create_cloud_scope": {
+                "type": "Http",
+                "inputs": {
+                  "method": "POST",
+                  "uri": "https://graph.microsoft.com/beta/security/zones",
+                  "headers": {
+                    "Content-Type": "application/json"
+                  },
+                  "body": {
+                    "displayName": "@concat(parameters('cloudScopeNamePrefix'), items('For_each_management_group')?['properties']?['displayName'])",
+                    "description": "@concat('Automatically synchronized from Azure management group ', items('For_each_management_group')?['name'], '.')",
+                    "environments": "@body('Build_desired_environments')"
+                  },
+                  "authentication": {
+                    "type": "ManagedServiceIdentity",
+                    "audience": "https://graph.microsoft.com"
+                  }
+                },
+                "runAfter": {}
+              }
+            }
+          },
+          "runAfter": {
+            "Find_existing_cloud_scope": [
+              "Succeeded"
+            ]
+          }
+        }
+      },
+      "runAfter": {
+        "Filter_management_groups": [
+          "Succeeded"
+        ],
+        "List_existing_cloud_scopes": [
+          "Succeeded"
+        ]
+      }
+    }
+  },
+  "outputs": {}
+  },
+  "parameters": {
+    "scheduleFrequency": {
+      "value": "Day"
+    },
+    "scheduleInterval": {
+      "value": 1
+    },
+    "cloudScopeNamePrefix": {
+      "value": "Azure - "
+    }
+  }
+}

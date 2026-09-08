@@ -20,18 +20,33 @@ foreach ($module in $requiredModules) {
     }
 }
 
-$connectParameters = @{
-    Scopes = @(
-        'Application.Read.All',
-        'AppRoleAssignment.ReadWrite.All'
-    )
-}
+$requiredScopes = @(
+    'Application.Read.All',
+    'AppRoleAssignment.ReadWrite.All'
+)
+$graphContext = Get-MgContext
+$hasRequiredScopes = $graphContext -and -not ($requiredScopes | Where-Object {
+    $_ -notin $graphContext.Scopes
+})
+$isRequestedTenant = -not $TenantId -or ($graphContext -and $graphContext.TenantId -eq $TenantId)
 
-if ($TenantId) {
-    $connectParameters.TenantId = $TenantId
-}
+if (-not ($graphContext -and $hasRequiredScopes -and $isRequestedTenant)) {
+    $connectParameters = @{
+        Scopes        = $requiredScopes
+        UseDeviceCode = $true
+        NoWelcome     = $true
+    }
 
-Connect-MgGraph @connectParameters -NoWelcome
+    if ($TenantId) {
+        $connectParameters.TenantId = $TenantId
+    }
+
+    Connect-MgGraph @connectParameters
+    $graphContext = Get-MgContext
+}
+else {
+    Write-Verbose "Using the existing Microsoft Graph session for tenant $($graphContext.TenantId)."
+}
 
 $graphServicePrincipal = Get-MgServicePrincipal -Filter "appId eq '00000003-0000-0000-c000-000000000000'" -Property Id, AppRoles
 $zoneRole = $graphServicePrincipal.AppRoles | Where-Object {
@@ -39,7 +54,20 @@ $zoneRole = $graphServicePrincipal.AppRoles | Where-Object {
 }
 
 if (-not $zoneRole) {
-    throw "The Microsoft Graph application role 'Zone.ReadWrite.All' was not found in this tenant."
+    throw @"
+Microsoft Graph does not currently publish the 'Zone.ReadWrite.All' application role in tenant
+$($graphContext.TenantId). Without a published app-role ID, the permission cannot be assigned to the
+Logic App managed identity.
+
+The beta zones API documentation names this permission, but the Microsoft Graph permissions catalog
+does not yet define it and the Defender cloud-scopes documentation currently describes scope CRUD as
+portal-only with API support coming soon. This indicates that application access has not been rolled
+out to this tenant. Create and manage cloud scopes in the Microsoft Defender portal until Microsoft
+publishes the role, then rerun this script.
+
+Zones API: https://learn.microsoft.com/graph/api/security-security-post-zones?view=graph-rest-beta
+Cloud scopes: https://learn.microsoft.com/azure/defender-for-cloud/cloud-scopes-unified-rbac
+"@
 }
 
 $existingAssignment = Get-MgServicePrincipalAppRoleAssignment -ServicePrincipalId $LogicAppPrincipalId -All |

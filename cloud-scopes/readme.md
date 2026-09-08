@@ -77,7 +77,9 @@ Then verify the resulting scopes in the Microsoft Defender portal under cloud sc
 
 ## API status
 
-The Microsoft Graph zones endpoints are currently available only under `/beta`. Microsoft states that beta APIs are subject to change and are not supported for production applications. Validate the workflow in a non-production tenant and monitor the linked API documentation for contract changes.
+The Microsoft Graph zones endpoints are currently documented only under `/beta`. Microsoft states that beta APIs are subject to change and are not supported for production applications.
+
+There is also a current rollout gap: the zones API documentation requires the `Zone.ReadWrite.All` application permission, but the Microsoft Graph permissions catalog does not publish an application-role identifier for that permission. The Defender cloud-scopes documentation describes scope CRUD as portal-only with API support coming soon. If `grant-graph-permission.ps1` reports that the role is unavailable, the Logic App cannot authenticate to the zones API in that tenant. Use the Microsoft Defender portal for cloud-scope management until Microsoft publishes the application role, then rerun the script and test the workflow in a non-production tenant.
 
 ## References
 
