@@ -25,8 +25,7 @@ The workflow uses the Azure Management Groups `getEntities` REST API to retrieve
 - A commercial Microsoft Entra tenant. The zones API is not available in US Government or China national clouds.
 - Permission to deploy a Logic App to the target resource group.
 - `Microsoft.Authorization/roleAssignments/write` at the selected management group, such as Owner or User Access Administrator, so the template can grant Reader to the managed identity.
-- Privileged Role Administrator or another role permitted to grant Microsoft Graph application permissions.
-- Microsoft Graph PowerShell modules `Microsoft.Graph.Authentication` and `Microsoft.Graph.Applications` for the post-deployment permission step.
+- Privileged Role Administrator or Global Administrator in Microsoft Entra ID to assign the Security Administrator directory role to the Logic App managed identity.
 
 Use the tenant root management-group ID to include the entire hierarchy. The template defaults this value to the tenant ID.
 
@@ -42,17 +41,25 @@ az deployment group create `
                rootManagementGroupId=<root-management-group-id>
 ```
 
-The deployment output includes `logicAppPrincipalId`. Grant that managed identity the Microsoft Graph `Zone.ReadWrite.All` application permission:
+The deployment output includes `logicAppPrincipalId`. Grant that managed identity the Microsoft Entra **Security Administrator** directory role. Sign in to Azure CLI as a Privileged Role Administrator or Global Administrator, then run:
 
 ```powershell
-Install-Module Microsoft.Graph.Authentication, Microsoft.Graph.Applications -Scope CurrentUser
+az login --tenant '<tenant-id>'
 
-.\grant-graph-permission.ps1 `
-  -LogicAppPrincipalId '<logicAppPrincipalId>' `
-  -TenantId '<tenant-id>'
+$roleAssignment = @{
+  principalId      = '<logicAppPrincipalId>'
+  roleDefinitionId = '194ae4cb-b126-40b2-bd5b-6091b380977d'
+  directoryScopeId = '/'
+} | ConvertTo-Json -Compress
+
+az rest `
+  --method POST `
+  --url 'https://graph.microsoft.com/v1.0/roleManagement/directory/roleAssignments' `
+  --headers 'Content-Type=application/json' `
+  --body $roleAssignment
 ```
 
-Admin consent is represented by the app-role assignment created by the script. Wait a few minutes for identity and permission replication before the first run.
+The role definition ID above is the tenant-wide Microsoft Entra Security Administrator role. Wait a few minutes for directory-role replication before the first run.
 
 ## Run and verify
 
@@ -77,9 +84,7 @@ Then verify the resulting scopes in the Microsoft Defender portal under cloud sc
 
 ## API status
 
-The Microsoft Graph zones endpoints are currently documented only under `/beta`. Microsoft states that beta APIs are subject to change and are not supported for production applications.
-
-There is also a current rollout gap: the zones API documentation requires the `Zone.ReadWrite.All` application permission, but the Microsoft Graph permissions catalog does not publish an application-role identifier for that permission. The Defender cloud-scopes documentation describes scope CRUD as portal-only with API support coming soon. If `grant-graph-permission.ps1` reports that the role is unavailable, the Logic App cannot authenticate to the zones API in that tenant. Use the Microsoft Defender portal for cloud-scope management until Microsoft publishes the application role, then rerun the script and test the workflow in a non-production tenant.
+The Microsoft Graph zones endpoints are currently documented only under `/beta`. Microsoft states that beta APIs are subject to change and are not supported for production applications. Validate the workflow and the Security Administrator authorization behavior in a non-production tenant before production use.
 
 ## References
 
